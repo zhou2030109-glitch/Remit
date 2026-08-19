@@ -1,0 +1,1769 @@
+[
+  {
+    "id": "prediction",
+    "name": "预测",
+    "description": "从历史观测、特征或时间演化规律预测连续数值与未来状态",
+    "keywords": [
+      "预测",
+      "未来",
+      "趋势",
+      "回归",
+      "时间序列"
+    ],
+    "subdomains": [
+      {
+        "id": "tabular-regression",
+        "name": "表格数据回归",
+        "description": "使用多个解释变量预测连续目标，并比较可解释基线",
+        "keywords": [
+          "连续目标",
+          "数值预测",
+          "特征",
+          "监督学习",
+          "回归"
+        ],
+        "methods": [
+          {
+            "id": "linear-regression",
+            "name": "线性回归",
+            "summary": "用线性组合刻画特征与连续目标的关系，作为可解释的预测基线",
+            "keywords": [
+              "线性回归",
+              "连续目标",
+              "线性关系",
+              "基线",
+              "解释系数"
+            ],
+            "assumptions": [
+              "目标与特征近似线性相关",
+              "残差独立且方差稳定"
+            ],
+            "failure_modes": [
+              "强非线性或严重共线性时预测不稳定"
+            ],
+            "validation": [
+              "残差诊断",
+              "交叉验证",
+              "与复杂模型比较"
+            ]
+          },
+          {
+            "id": "ridge-regression",
+            "name": "岭回归",
+            "summary": "引入二范数正则抑制共线性与高维过拟合，保持线性可解释性",
+            "keywords": [
+              "岭回归",
+              "正则化",
+              "共线性",
+              "高维",
+              "小样本"
+            ],
+            "assumptions": [
+              "线性结构足以表达主要关系"
+            ],
+            "failure_modes": [
+              "复杂非线性关系会被系统性欠拟合"
+            ],
+            "validation": [
+              "折内选择正则强度",
+              "与普通线性回归同折对比"
+            ]
+          },
+          {
+            "id": "gradient-boosting-regression",
+            "name": "梯度提升回归",
+            "summary": "以加法集成方式拟合复杂非线性与特征交互，预测精度高",
+            "keywords": [
+              "梯度提升",
+              "XGBoost",
+              "GBDT",
+              "非线性",
+              "集成"
+            ],
+            "assumptions": [
+              "训练样本能代表部署分布"
+            ],
+            "failure_modes": [
+              "样本少或存在泄漏时容易过拟合"
+            ],
+            "validation": [
+              "嵌套交叉验证",
+              "与线性基线对比",
+              "SHAP 稳定性检查"
+            ]
+          },
+          {
+            "id": "random-forest-regression",
+            "name": "随机森林回归",
+            "summary": "用自助抽样与特征随机化集成回归树，稳健处理非线性与缺失",
+            "keywords": [
+              "随机森林",
+              "Bagging",
+              "决策树",
+              "稳健",
+              "非线性"
+            ],
+            "assumptions": [
+              "特征间存在可利用的结构关系"
+            ],
+            "failure_modes": [
+              "外推能力弱且对极端值不敏感"
+            ],
+            "validation": [
+              "袋外误差",
+              "特征重要性排序",
+              "交叉验证"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "time-series-forecasting",
+        "name": "时间序列预测",
+        "description": "利用趋势、季节性、自相关与多变量动态预测未来取值",
+        "keywords": [
+          "时间序列",
+          "趋势",
+          "季节性",
+          "滞后",
+          "未来"
+        ],
+        "methods": [
+          {
+            "id": "sarima",
+            "name": "季节性差分自回归滑动平均",
+            "summary": "对单变量序列同时建模趋势、季节性与滞后结构，适合周期性数据",
+            "keywords": [
+              "SARIMA",
+              "季节性",
+              "单变量",
+              "差分",
+              "自相关"
+            ],
+            "assumptions": [
+              "差分后近似平稳",
+              "季节周期可识别且稳定"
+            ],
+            "failure_modes": [
+              "结构突变与外生冲击会显著降低精度"
+            ],
+            "validation": [
+              "滚动时间窗回测",
+              "残差白噪声检验"
+            ]
+          },
+          {
+            "id": "exponential-smoothing",
+            "name": "指数平滑",
+            "summary": "用水平、趋势与季节成分做短期预测，参数少、易解释",
+            "keywords": [
+              "指数平滑",
+              "短期预测",
+              "趋势",
+              "平滑",
+              "季节性"
+            ],
+            "assumptions": [
+              "近期模式对近未来仍有代表性"
+            ],
+            "failure_modes": [
+              "难以捕捉复杂外生因素与剧烈突变"
+            ],
+            "validation": [
+              "滚动原点回测",
+              "与朴素预测比较"
+            ]
+          },
+          {
+            "id": "vector-autoregression",
+            "name": "向量自回归",
+            "summary": "联合刻画多个时间序列之间的滞后影响与脉冲响应",
+            "keywords": [
+              "VAR",
+              "多变量时间序列",
+              "脉冲响应",
+              "相互影响"
+            ],
+            "assumptions": [
+              "差分后平稳",
+              "变量数量与滞后阶数同样本量匹配"
+            ],
+            "failure_modes": [
+              "高维小样本下参数迅速膨胀"
+            ],
+            "validation": [
+              "时间外预测",
+              "残差稳定性检验"
+            ]
+          },
+          {
+            "id": "prophet-trend-decomposition",
+            "name": "趋势分解预测",
+            "summary": "把序列分解为趋势、周期与假期效应的可加组合，容忍缺失与异常",
+            "keywords": [
+              "Prophet",
+              "趋势分解",
+              "节假日效应",
+              "缺失值",
+              "周期"
+            ],
+            "assumptions": [
+              "可加结构能描述序列",
+              "存在周期或节假日影响"
+            ],
+            "failure_modes": [
+              "对长程漂移与不规则突变适应性有限"
+            ],
+            "validation": [
+              "分段交叉验证",
+              "分解成分合理性检查"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "small-sample-forecasting",
+        "name": "小样本与稀疏数据预测",
+        "description": "在观测较少时控制模型复杂度并表达预测不确定性",
+        "keywords": [
+          "小样本",
+          "少数据",
+          "稀疏",
+          "不确定性",
+          "短序列"
+        ],
+        "methods": [
+          {
+            "id": "gm11",
+            "name": "灰色预测 GM(1,1)",
+            "summary": "对短且平滑的近似指数序列建立一阶灰色微分方程作外推",
+            "keywords": [
+              "GM(1,1)",
+              "灰色预测",
+              "短序列",
+              "指数演化"
+            ],
+            "assumptions": [
+              "序列近似指数演化",
+              "级比检验通过"
+            ],
+            "failure_modes": [
+              "震荡、季节与突变序列不适用"
+            ],
+            "validation": [
+              "级比检验",
+              "后验差检验",
+              "留后滚动验证"
+            ]
+          },
+          {
+            "id": "gaussian-process-regression",
+            "name": "高斯过程回归",
+            "summary": "以核函数表达平滑关系并直接给出预测分布与区间",
+            "keywords": [
+              "高斯过程",
+              "核函数",
+              "预测区间",
+              "小样本"
+            ],
+            "assumptions": [
+              "核函数能表达目标的平滑结构"
+            ],
+            "failure_modes": [
+              "大样本计算昂贵且对核选择敏感"
+            ],
+            "validation": [
+              "核超参数折内选择",
+              "区间覆盖率检查"
+            ]
+          },
+          {
+            "id": "bootstrap-forecast",
+            "name": "自助法预测区间",
+            "summary": "通过重采样评估小样本预测的不确定性与稳定性",
+            "keywords": [
+              "Bootstrap",
+              "重采样",
+              "预测区间",
+              "不确定性"
+            ],
+            "assumptions": [
+              "重采样单位保持数据依赖结构"
+            ],
+            "failure_modes": [
+              "逐行独立重采样会破坏分组或时间依赖"
+            ],
+            "validation": [
+              "区间覆盖率",
+              "按独立单位重采样"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "optimization",
+    "name": "优化",
+    "description": "在目标函数与约束条件下寻找最优或近似最优的决策方案",
+    "keywords": [
+      "优化",
+      "最优",
+      "目标函数",
+      "约束",
+      "决策"
+    ],
+    "subdomains": [
+      {
+        "id": "mathematical-programming",
+        "name": "数学规划",
+        "description": "以精确数学模型表达目标与约束，求解资源配置与调度问题",
+        "keywords": [
+          "线性规划",
+          "整数规划",
+          "非线性规划",
+          "约束优化",
+          "资源分配"
+        ],
+        "methods": [
+          {
+            "id": "linear-programming",
+            "name": "线性规划",
+            "summary": "在线性目标与线性约束下求最优资源分配或调度方案",
+            "keywords": [
+              "线性规划",
+              "线性目标",
+              "线性约束",
+              "资源分配",
+              "LP"
+            ],
+            "assumptions": [
+              "目标与约束均为线性",
+              "决策变量连续可调"
+            ],
+            "failure_modes": [
+              "整数性或强非线性必须放宽时结果不可直接使用"
+            ],
+            "validation": [
+              "对偶价格与灵敏度分析",
+              "与启发式解对比"
+            ]
+          },
+          {
+            "id": "integer-programming",
+            "name": "整数规划",
+            "summary": "在含整数或 0-1 变量的约束系统中寻找全局最优决策组合",
+            "keywords": [
+              "整数规划",
+              "0-1 变量",
+              "组合优化",
+              "选址",
+              "排班"
+            ],
+            "assumptions": [
+              "数学模型能准确表达可行域"
+            ],
+            "failure_modes": [
+              "大规模时精确求解困难"
+            ],
+            "validation": [
+              "分支定界收敛性",
+              "松弛解可行性检查"
+            ]
+          },
+          {
+            "id": "nonlinear-programming",
+            "name": "非线性规划",
+            "summary": "处理非线性目标与约束的连续优化，适用于复杂工程与经济决策",
+            "keywords": [
+              "非线性规划",
+              "连续优化",
+              "KKT",
+              "梯度"
+            ],
+            "assumptions": [
+              "目标与约束可微或可近似"
+            ],
+            "failure_modes": [
+              "多局部极值时结果依赖初值"
+            ],
+            "validation": [
+              "多起点搜索",
+              "KKT 条件检查",
+              "与全局启发式对比"
+            ]
+          },
+          {
+            "id": "dynamic-programming",
+            "name": "动态规划",
+            "summary": "把多阶段决策按状态递推求全局最优，避免枚举组合爆炸",
+            "keywords": [
+              "动态规划",
+              "多阶段",
+              "状态转移",
+              "最优子结构"
+            ],
+            "assumptions": [
+              "满足最优子结构与无后效性"
+            ],
+            "failure_modes": [
+              "状态空间维数过高时计算不可行"
+            ],
+            "validation": [
+              "与贪心或枚举小规模对比",
+              "状态压缩合理性"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "metaheuristic-optimization",
+        "name": "启发式与群体智能",
+        "description": "用随机搜索与群体协同逼近复杂优化问题的全局最优",
+        "keywords": [
+          "遗传算法",
+          "粒子群",
+          "模拟退火",
+          "元启发式",
+          "全局搜索"
+        ],
+        "methods": [
+          {
+            "id": "genetic-algorithm",
+            "name": "遗传算法",
+            "summary": "模拟自然选择对解种群进行选择、交叉与变异，用于复杂组合优化",
+            "keywords": [
+              "遗传算法",
+              "进化",
+              "种群",
+              "交叉变异",
+              "组合优化"
+            ],
+            "assumptions": [
+              "解可编码为染色体且适应度可计算"
+            ],
+            "failure_modes": [
+              "参数敏感且收敛慢于专用方法"
+            ],
+            "validation": [
+              "多组随机种子复现",
+              "与精确解或基线比较"
+            ]
+          },
+          {
+            "id": "particle-swarm-optimization",
+            "name": "粒子群优化",
+            "summary": "通过粒子速度与位置更新在连续空间中协同搜索最优解",
+            "keywords": [
+              "粒子群",
+              "群体智能",
+              "连续优化",
+              "速度更新"
+            ],
+            "assumptions": [
+              "目标函数可快速评估且噪声较小"
+            ],
+            "failure_modes": [
+              "高维多模态问题易早熟收敛"
+            ],
+            "validation": [
+              "多起点对比",
+              "收敛曲线检查"
+            ]
+          },
+          {
+            "id": "simulated-annealing",
+            "name": "模拟退火",
+            "summary": "以温度退火机制接受劣解跳出局部最优，适合复杂邻域搜索",
+            "keywords": [
+              "模拟退火",
+              "邻域搜索",
+              "退火",
+              "局部最优"
+            ],
+            "assumptions": [
+              "存在可定义且连通的邻域结构"
+            ],
+            "failure_modes": [
+              "降温计划不当会退化为随机搜索"
+            ],
+            "validation": [
+              "降温参数敏感性",
+              "多次运行最优值分布"
+            ]
+          },
+          {
+            "id": "nsga2",
+            "name": "NSGA-II 多目标优化",
+            "summary": "基于非支配排序与拥挤度保持 Pareto 前沿的收敛性与多样性",
+            "keywords": [
+              "NSGA-II",
+              "多目标",
+              "Pareto",
+              "非支配排序",
+              "拥挤度"
+            ],
+            "assumptions": [
+              "多个目标相互冲突且可同时评估"
+            ],
+            "failure_modes": [
+              "高维目标空间前沿可视化与选择困难"
+            ],
+            "validation": [
+              "Pareto 前沿覆盖率",
+              "收敛性与多样性指标"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "sequential-decision",
+        "name": "序贯决策",
+        "description": "在动态或未知环境中按状态转移逐步做出最优决策",
+        "keywords": [
+          "序贯决策",
+          "马尔可夫",
+          "动态环境",
+          "策略"
+        ],
+        "methods": [
+          {
+            "id": "markov-decision-process",
+            "name": "马尔可夫决策过程",
+            "summary": "以状态-动作-奖励模型刻画序贯决策并求解最优策略",
+            "keywords": [
+              "MDP",
+              "马尔可夫",
+              "状态转移",
+              "策略",
+              "奖励"
+            ],
+            "assumptions": [
+              "状态转移满足马尔可夫性",
+              "转移与奖励可估计"
+            ],
+            "failure_modes": [
+              "状态空间大或转移未知时求解困难"
+            ],
+            "validation": [
+              "策略迭代收敛性",
+              "与仿真回报对比"
+            ]
+          },
+          {
+            "id": "q-learning",
+            "name": "Q 学习",
+            "summary": "在未知转移环境下用时序差分更新动作价值，得到最优策略",
+            "keywords": [
+              "Q学习",
+              "强化学习",
+              "时序差分",
+              "无模型"
+            ],
+            "assumptions": [
+              "环境可反复交互且奖励稳定"
+            ],
+            "failure_modes": [
+              "样本效率低，收敛受探索策略影响"
+            ],
+            "validation": [
+              "训练回报曲线",
+              "与基准策略对比"
+            ]
+          },
+          {
+            "id": "real-options-analysis",
+            "name": "实物期权分析",
+            "summary": "把投资决策视为可延迟、可扩张的期权，量化灵活性与不确定性价值",
+            "keywords": [
+              "实物期权",
+              "不确定性",
+              "投资决策",
+              "灵活性"
+            ],
+            "assumptions": [
+              "不确定性可用随机过程描述"
+            ],
+            "failure_modes": [
+              "参数主观性强难以校准"
+            ],
+            "validation": [
+              "情景与敏感性分析",
+              "与净现值对比"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "evaluation-decision",
+    "name": "评价与决策",
+    "description": "综合多个指标对候选方案进行赋权、打分与排序，支持多准则决策",
+    "keywords": [
+      "评价",
+      "决策",
+      "权重",
+      "排序",
+      "综合"
+    ],
+    "subdomains": [
+      {
+        "id": "indicator-weighting",
+        "name": "指标赋权",
+        "description": "确定各评价指标的相对重要性权重",
+        "keywords": [
+          "熵权",
+          "层次分析",
+          "客观权重",
+          "主观权重",
+          "组合赋权"
+        ],
+        "methods": [
+          {
+            "id": "entropy-weight",
+            "name": "熵权法",
+            "summary": "根据指标信息熵确定客观权重，突出区分度大的指标",
+            "keywords": [
+              "熵权法",
+              "信息熵",
+              "客观赋权",
+              "区分度"
+            ],
+            "assumptions": [
+              "样本能代表评价总体",
+              "指标量纲差异可标准化"
+            ],
+            "failure_modes": [
+              "指标高度相关时权重失真"
+            ],
+            "validation": [
+              "与主观权重对比",
+              "权重稳定性检验"
+            ]
+          },
+          {
+            "id": "analytic-hierarchy-process",
+            "name": "层次分析法",
+            "summary": "通过两两比较与一致性检验把专家经验转化为指标权重",
+            "keywords": [
+              "层次分析法",
+              "AHP",
+              "两两比较",
+              "一致性检验",
+              "主观赋权"
+            ],
+            "assumptions": [
+              "层次结构清晰且判断矩阵一致"
+            ],
+            "failure_modes": [
+              "指标过多时判断负担大、一致性差"
+            ],
+            "validation": [
+              "一致性比率检验",
+              "排序结果灵敏度分析"
+            ]
+          },
+          {
+            "id": "critic",
+            "name": "CRITIC 客观赋权法",
+            "summary": "综合指标对比强度与冲突性确定客观权重，兼顾信息量与相关性",
+            "keywords": [
+              "CRITIC",
+              "客观赋权",
+              "对比强度",
+              "冲突性"
+            ],
+            "assumptions": [
+              "指标相关性矩阵可稳定估计"
+            ],
+            "failure_modes": [
+              "样本少时相关性估计不稳定"
+            ],
+            "validation": [
+              "与熵权结果对比",
+              "去相关后稳健性检查"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "multi-criteria-ranking",
+        "name": "多准则综合评价",
+        "description": "基于权重与理想解对多个方案进行综合打分与排序",
+        "keywords": [
+          "TOPSIS",
+          "灰色关联",
+          "多准则",
+          "排序",
+          "综合得分"
+        ],
+        "methods": [
+          {
+            "id": "topsis",
+            "name": "TOPSIS 法",
+            "summary": "以距正理想解最近、距负理想解最远为准则对方案排序",
+            "keywords": [
+              "TOPSIS",
+              "正负理想解",
+              "接近度",
+              "排序"
+            ],
+            "assumptions": [
+              "指标方向与权重已知",
+              "决策矩阵可标准化"
+            ],
+            "failure_modes": [
+              "权重输入质量决定结果合理性"
+            ],
+            "validation": [
+              "权重与标准化方法敏感性分析"
+            ]
+          },
+          {
+            "id": "grey-relational-analysis",
+            "name": "灰色关联分析",
+            "summary": "通过序列几何接近程度度量方案与理想模式的关联度",
+            "keywords": [
+              "灰色关联",
+              "关联度",
+              "序列接近",
+              "小样本"
+            ],
+            "assumptions": [
+              "指标序列可比且方向一致"
+            ],
+            "failure_modes": [
+              "分辨系数选择影响排序"
+            ],
+            "validation": [
+              "分辨系数敏感性",
+              "与 TOPSIS 结果对比"
+            ]
+          },
+          {
+            "id": "vikor",
+            "name": "VIKOR 法",
+            "summary": "在群体效用与个体遗憾之间折中，给出可接受的妥协解",
+            "keywords": [
+              "VIKOR",
+              "妥协解",
+              "群体效用",
+              "个体遗憾"
+            ],
+            "assumptions": [
+              "决策者接受妥协排序规则"
+            ],
+            "failure_modes": [
+              "权重与折中系数变化会改变排序"
+            ],
+            "validation": [
+              "系数与权重灵敏度",
+              "与其他排序方法对比"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "efficiency-risk-evaluation",
+        "name": "效率与风险评估",
+        "description": "评估决策单元的相对效率及方案面临的不确定风险",
+        "keywords": [
+          "效率",
+          "风险",
+          "DEA",
+          "VaR",
+          "蒙特卡洛"
+        ],
+        "methods": [
+          {
+            "id": "dea",
+            "name": "数据包络分析",
+            "summary": "基于投入产出前沿评估多投入多产出决策单元的相对效率",
+            "keywords": [
+              "DEA",
+              "效率前沿",
+              "投入产出",
+              "决策单元"
+            ],
+            "assumptions": [
+              "投入产出指标完整且同质"
+            ],
+            "failure_modes": [
+              "异常值与指标选择显著改变效率得分"
+            ],
+            "validation": [
+              "指标增删稳健性",
+              "超效率排序"
+            ]
+          },
+          {
+            "id": "value-at-risk",
+            "name": "风险价值度量",
+            "summary": "以给定置信水平下的最大可能损失量化组合风险",
+            "keywords": [
+              "VaR",
+              "风险度量",
+              "置信水平",
+              "损失分布"
+            ],
+            "assumptions": [
+              "损失分布可估计且尾部行为稳定"
+            ],
+            "failure_modes": [
+              "厚尾与极端事件下低估风险"
+            ],
+            "validation": [
+              "回测超限率",
+              "不同置信水平一致性"
+            ]
+          },
+          {
+            "id": "monte-carlo-risk",
+            "name": "蒙特卡洛风险评估",
+            "summary": "用随机抽样模拟不确定性传播，量化风险概率与区间",
+            "keywords": [
+              "蒙特卡洛",
+              "随机模拟",
+              "风险概率",
+              "不确定性传播"
+            ],
+            "assumptions": [
+              "输入分布设定合理"
+            ],
+            "failure_modes": [
+              "分布设定错误时结果失真"
+            ],
+            "validation": [
+              "抽样规模收敛性",
+              "敏感性分析"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "classification-clustering",
+    "name": "分类与聚类",
+    "description": "把样本划分到已知类别或由数据发现内在分组结构",
+    "keywords": [
+      "分类",
+      "聚类",
+      "监督学习",
+      "无监督",
+      "降维"
+    ],
+    "subdomains": [
+      {
+        "id": "supervised-classification",
+        "name": "监督分类",
+        "description": "利用带标签样本训练分类器，对未知样本判别类别",
+        "keywords": [
+          "逻辑回归",
+          "支持向量机",
+          "随机森林",
+          "KNN",
+          "分类器"
+        ],
+        "methods": [
+          {
+            "id": "logistic-regression",
+            "name": "逻辑回归",
+            "summary": "用对数几率建模二分类概率，系数可直接解释",
+            "keywords": [
+              "逻辑回归",
+              "二分类",
+              "概率",
+              "可解释"
+            ],
+            "assumptions": [
+              "对数几率与特征近似线性"
+            ],
+            "failure_modes": [
+              "特征强非线性交互时性能受限"
+            ],
+            "validation": [
+              "混淆矩阵与 AUC",
+              "交叉验证"
+            ]
+          },
+          {
+            "id": "support-vector-machine",
+            "name": "支持向量机",
+            "summary": "通过最大间隔超平面与核技巧处理高维非线性分类",
+            "keywords": [
+              "支持向量机",
+              "SVM",
+              "核方法",
+              "最大间隔"
+            ],
+            "assumptions": [
+              "核函数与数据分布匹配"
+            ],
+            "failure_modes": [
+              "样本量大时训练慢且调参复杂"
+            ],
+            "validation": [
+              "核与正则参数网格搜索",
+              "交叉验证"
+            ]
+          },
+          {
+            "id": "random-forest-classifier",
+            "name": "随机森林分类",
+            "summary": "集成多棵随机树投票分类，稳健处理高维与噪声",
+            "keywords": [
+              "随机森林",
+              "集成",
+              "投票",
+              "稳健",
+              "高维"
+            ],
+            "assumptions": [
+              "类别分布相对均衡且特征有区分力"
+            ],
+            "failure_modes": [
+              "类别极端不平衡时偏向多数类"
+            ],
+            "validation": [
+              "袋外准确率",
+              "类别加权评估"
+            ]
+          },
+          {
+            "id": "k-nearest-neighbors",
+            "name": "K 近邻分类",
+            "summary": "根据样本在特征空间中的近邻类别投票分类，无需训练参数",
+            "keywords": [
+              "KNN",
+              "近邻",
+              "距离度量",
+              "非参数"
+            ],
+            "assumptions": [
+              "特征空间距离能反映语义相似性"
+            ],
+            "failure_modes": [
+              "高维稀疏与类别不平衡时表现差"
+            ],
+            "validation": [
+              "K 与距离度量调参",
+              "标准化影响检查"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unsupervised-clustering",
+        "name": "无监督聚类",
+        "description": "在无标签数据上发现自然分组与相似结构",
+        "keywords": [
+          "K均值",
+          "层次聚类",
+          "DBSCAN",
+          "高斯混合",
+          "聚类"
+        ],
+        "methods": [
+          {
+            "id": "kmeans",
+            "name": "K 均值聚类",
+            "summary": "以距离最近原则迭代划分样本，得到指定数量的紧凑簇",
+            "keywords": [
+              "K均值",
+              "聚类",
+              "欧氏距离",
+              "质心"
+            ],
+            "assumptions": [
+              "簇近似球形且规模相近"
+            ],
+            "failure_modes": [
+              "K 需先验且对初始点敏感"
+            ],
+            "validation": [
+              "肘部法与轮廓系数",
+              "多次初始化复现"
+            ]
+          },
+          {
+            "id": "agglomerative-clustering",
+            "name": "层次聚类",
+            "summary": "自底向上合并相似簇，形成可解释的层级树状结构",
+            "keywords": [
+              "层次聚类",
+              "树状图",
+              "凝聚",
+              "距离"
+            ],
+            "assumptions": [
+              "距离度量能表达簇间层次关系"
+            ],
+            "failure_modes": [
+              "样本量大时计算昂贵且对割裂点敏感"
+            ],
+            "validation": [
+              "树状图目检",
+              "连接准则对比"
+            ]
+          },
+          {
+            "id": "dbscan",
+            "name": "密度聚类",
+            "summary": "基于密度连通发现任意形状簇并识别噪声点",
+            "keywords": [
+              "DBSCAN",
+              "密度",
+              "噪声",
+              "任意形状"
+            ],
+            "assumptions": [
+              "簇内密度均匀可参数化"
+            ],
+            "failure_modes": [
+              "密度差异大时无法同时捕捉粗细簇"
+            ],
+            "validation": [
+              "参数扫描",
+              "噪声比例检查"
+            ]
+          },
+          {
+            "id": "gaussian-mixture-model",
+            "name": "高斯混合模型",
+            "summary": "用有限个高斯成分的概率混合刻画复杂分布并进行软聚类",
+            "keywords": [
+              "高斯混合",
+              "软聚类",
+              "概率密度",
+              "EM"
+            ],
+            "assumptions": [
+              "数据来自混合高斯分布"
+            ],
+            "failure_modes": [
+              "成分数量难定且易局部最优"
+            ],
+            "validation": [
+              "BIC 与轮廓对比",
+              "多初始点复现"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "latent-structure",
+        "name": "降维与潜在结构",
+        "description": "用少数综合变量或潜在因子解释高维数据的结构",
+        "keywords": [
+          "主成分",
+          "因子分析",
+          "降维",
+          "潜在变量",
+          "判别"
+        ],
+        "methods": [
+          {
+            "id": "pca",
+            "name": "主成分分析",
+            "summary": "以方差最大方向做线性降维，提取少数综合指标",
+            "keywords": [
+              "主成分",
+              "降维",
+              "方差解释",
+              "线性变换"
+            ],
+            "assumptions": [
+              "主要结构可用线性子空间描述"
+            ],
+            "failure_modes": [
+              "强非线性结构时线性降维失真"
+            ],
+            "validation": [
+              "累计方差贡献率",
+              "载荷图解释性"
+            ]
+          },
+          {
+            "id": "factor-analysis",
+            "name": "因子分析",
+            "summary": "用少数公共因子解释指标间相关性并测度潜在结构",
+            "keywords": [
+              "因子分析",
+              "公共因子",
+              "潜在变量",
+              "旋转"
+            ],
+            "assumptions": [
+              "观测指标由公共因子与独特因子生成"
+            ],
+            "failure_modes": [
+              "因子解释与旋转选择主观性强"
+            ],
+            "validation": [
+              "因子载荷稳定性",
+              "KMO 适用性检验"
+            ]
+          },
+          {
+            "id": "linear-discriminant-analysis",
+            "name": "线性判别分析",
+            "summary": "在最大化类间分离的同时降维，兼顾分类与可视化",
+            "keywords": [
+              "LDA",
+              "线性判别",
+              "类间方差",
+              "降维"
+            ],
+            "assumptions": [
+              "各类协方差相近且服从正态"
+            ],
+            "failure_modes": [
+              "类别重叠严重时分离效果有限"
+            ],
+            "validation": [
+              "分类准确率",
+              "投影可分性目检"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "statistics-causal",
+    "name": "统计推断与因果",
+    "description": "通过假设检验与因果推断方法从数据中得出可靠的统计结论",
+    "keywords": [
+      "假设检验",
+      "回归",
+      "因果",
+      "显著性",
+      "随机"
+    ],
+    "subdomains": [
+      {
+        "id": "hypothesis-testing",
+        "name": "假设检验",
+        "description": "基于样本对总体参数或分布假设做出显著性判断",
+        "keywords": [
+          "t检验",
+          "方差分析",
+          "卡方",
+          "秩和",
+          "显著性"
+        ],
+        "methods": [
+          {
+            "id": "t-test",
+            "name": "t 检验",
+            "summary": "比较两组均值差异是否显著，适用于小样本连续数据",
+            "keywords": [
+              "t检验",
+              "均值差异",
+              "两组比较",
+              "显著性"
+            ],
+            "assumptions": [
+              "样本近似正态且方差可比"
+            ],
+            "failure_modes": [
+              "严重偏态或离群值会误导结论"
+            ],
+            "validation": [
+              "正态性检验",
+              "方差齐性检验",
+              "效应量"
+            ]
+          },
+          {
+            "id": "anova",
+            "name": "方差分析",
+            "summary": "比较多个组均值差异，把总变异分解为组间与组内",
+            "keywords": [
+              "方差分析",
+              "多组比较",
+              "组间组内变异",
+              "F检验"
+            ],
+            "assumptions": [
+              "各组独立、近似正态且方差齐"
+            ],
+            "failure_modes": [
+              "方差不齐或非正态时结果失真"
+            ],
+            "validation": [
+              "Levene 检验",
+              "多重比较校正",
+              "非参数替代"
+            ]
+          },
+          {
+            "id": "chi-square-test",
+            "name": "卡方检验",
+            "summary": "检验分类变量间关联性或分布拟合，基于频数表",
+            "keywords": [
+              "卡方检验",
+              "列联表",
+              "关联性",
+              "频数"
+            ],
+            "assumptions": [
+              "期望频数不宜过小"
+            ],
+            "failure_modes": [
+              "稀疏表导致检验近似失效"
+            ],
+            "validation": [
+              "期望频数检查",
+              "Fisher 精确检验"
+            ]
+          },
+          {
+            "id": "wilcoxon-rank-sum",
+            "name": "秩和检验",
+            "summary": "基于秩比较两组分布差异，无需正态假设",
+            "keywords": [
+              "Wilcoxon",
+              "秩和",
+              "非参数",
+              "分布比较"
+            ],
+            "assumptions": [
+              "样本独立可比"
+            ],
+            "failure_modes": [
+              "对位置差异之外的形状差异不敏感"
+            ],
+            "validation": [
+              "效应量",
+              "与参数检验对比"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "relationship-modeling",
+        "name": "关联与建模",
+        "description": "度量变量间关联强度并建立可解释的统计模型",
+        "keywords": [
+          "相关分析",
+          "回归建模",
+          "广义线性",
+          "关联强度"
+        ],
+        "methods": [
+          {
+            "id": "correlation-analysis",
+            "name": "相关分析",
+            "summary": "度量连续变量间线性或秩相关强度与方向",
+            "keywords": [
+              "相关分析",
+              "Pearson",
+              "Spearman",
+              "相关强度"
+            ],
+            "assumptions": [
+              "样本代表总体且关系可度量"
+            ],
+            "failure_modes": [
+              "异常值与非线性会扭曲相关系数"
+            ],
+            "validation": [
+              "散点图目检",
+              "相关系数显著性"
+            ]
+          },
+          {
+            "id": "generalized-linear-model",
+            "name": "广义线性模型",
+            "summary": "把线性预测器与链接函数结合，统一处理连续、计数与二值响应",
+            "keywords": [
+              "广义线性模型",
+              "GLM",
+              "链接函数",
+              "指数族"
+            ],
+            "assumptions": [
+              "响应服从指定指数族分布"
+            ],
+            "failure_modes": [
+              "过度离散或零膨胀时拟合不足"
+            ],
+            "validation": [
+              "偏差分析",
+              "残差诊断",
+              "过离散检验"
+            ]
+          },
+          {
+            "id": "multiple-linear-regression",
+            "name": "多元线性回归",
+            "summary": "同时考察多个解释变量对连续目标的联合影响",
+            "keywords": [
+              "多元回归",
+              "多变量",
+              "共线性",
+              "控制变量"
+            ],
+            "assumptions": [
+              "线性、独立、同方差且无严重共线性"
+            ],
+            "failure_modes": [
+              "解释变量内生时系数有偏"
+            ],
+            "validation": [
+              "VIF 检查",
+              "残差诊断",
+              "交叉验证"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "causal-inference",
+        "name": "因果推断",
+        "description": "在观测数据下识别干预或政策的因果效应",
+        "keywords": [
+          "因果",
+          "双重差分",
+          "倾向得分",
+          "工具变量",
+          "反事实"
+        ],
+        "methods": [
+          {
+            "id": "difference-in-differences",
+            "name": "双重差分法",
+            "summary": "比较处理组与对照组在政策前后变化的差异，识别处理效应",
+            "keywords": [
+              "双重差分",
+              "政策效应",
+              "处理组对照组",
+              "平行趋势"
+            ],
+            "assumptions": [
+              "平行趋势假设成立",
+              "无预期效应与干扰"
+            ],
+            "failure_modes": [
+              "趋势不平行时估计有偏"
+            ],
+            "validation": [
+              "平行趋势检验",
+              "安慰剂检验"
+            ]
+          },
+          {
+            "id": "propensity-score-matching",
+            "name": "倾向得分匹配",
+            "summary": "用倾向得分平衡协变量分布，近似随机化比较处理效应",
+            "keywords": [
+              "倾向得分",
+              "匹配",
+              "选择偏差",
+              "平衡性"
+            ],
+            "assumptions": [
+              "可忽略性（无遗漏混杂）"
+            ],
+            "failure_modes": [
+              "未观测混杂仍会造成偏差"
+            ],
+            "validation": [
+              "平衡性诊断",
+              "重叠支持检查"
+            ]
+          },
+          {
+            "id": "instrumental-variable",
+            "name": "工具变量法",
+            "summary": "借助与内生变量相关、与扰动项独立的工具变量识别因果效应",
+            "keywords": [
+              "工具变量",
+              "内生性",
+              "两阶段最小二乘",
+              "IV"
+            ],
+            "assumptions": [
+              "工具与扰动独立且与内生变量强相关"
+            ],
+            "failure_modes": [
+              "弱工具导致估计不稳定"
+            ],
+            "validation": [
+              "第一阶段 F 统计量",
+              "过度识别检验"
+            ]
+          },
+          {
+            "id": "synthetic-control",
+            "name": "合成控制法",
+            "summary": "用多个对照单元加权构造反事实，评估单一干预的效应",
+            "keywords": [
+              "合成控制",
+              "反事实",
+              "安慰剂检验",
+              "权重"
+            ],
+            "assumptions": [
+              "对照组合能充分重构处理单元趋势"
+            ],
+            "failure_modes": [
+              "对照不足或外推过度时失效"
+            ],
+            "validation": [
+              "安慰剂检验",
+              "权重合理性检查"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "simulation-network",
+    "name": "仿真、机理与网络",
+    "description": "用仿真、机理方程与网络分析刻画复杂系统的动态行为",
+    "keywords": [
+      "仿真",
+      "机理",
+      "微分方程",
+      "网络",
+      "复杂系统"
+    ],
+    "subdomains": [
+      {
+        "id": "stochastic-simulation",
+        "name": "随机仿真",
+        "description": "通过随机抽样模拟系统行为并量化不确定性",
+        "keywords": [
+          "蒙特卡洛",
+          "排队论",
+          "多智能体",
+          "随机过程"
+        ],
+        "methods": [
+          {
+            "id": "monte-carlo-simulation",
+            "name": "蒙特卡洛仿真",
+            "summary": "通过对随机输入大量抽样模拟系统输出分布，量化不确定性",
+            "keywords": [
+              "蒙特卡洛",
+              "随机抽样",
+              "分布估计",
+              "不确定性"
+            ],
+            "assumptions": [
+              "输入分布与相关性设定合理"
+            ],
+            "failure_modes": [
+              "极端事件概率低时需海量样本"
+            ],
+            "validation": [
+              "样本量收敛性",
+              "敏感性分析",
+              "方差缩减"
+            ]
+          },
+          {
+            "id": "queuing-model",
+            "name": "排队论模型",
+            "summary": "用到达与服务过程刻画等待系统的队长、时延与利用率",
+            "keywords": [
+              "排队论",
+              "到达率",
+              "服务率",
+              "等待时间",
+              "利用率"
+            ],
+            "assumptions": [
+              "到达与服务过程可参数化"
+            ],
+            "failure_modes": [
+              "突发性与相关性破坏平稳假设"
+            ],
+            "validation": [
+              "稳态条件验证",
+              "与仿真对比"
+            ]
+          },
+          {
+            "id": "agent-based-simulation",
+            "name": "多智能体仿真",
+            "summary": "自底向上模拟异质主体行为与交互，涌现宏观现象",
+            "keywords": [
+              "多智能体",
+              "涌现",
+              "主体交互",
+              "自底向上"
+            ],
+            "assumptions": [
+              "主体行为规则可设定且参数可校准"
+            ],
+            "failure_modes": [
+              "参数众多难校准、结果依赖随机种子"
+            ],
+            "validation": [
+              "宏观指标敏感性",
+              "极端情景压力测试"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "continuous-dynamics",
+        "name": "连续动力系统",
+        "description": "用微分方程与反馈回路描述连续系统的演化机理",
+        "keywords": [
+          "微分方程",
+          "系统动力学",
+          "机理建模",
+          "演化"
+        ],
+        "methods": [
+          {
+            "id": "ode-modeling",
+            "name": "常微分方程建模",
+            "summary": "用常微分方程组刻画连续时间系统的状态演化机理",
+            "keywords": [
+              "常微分方程",
+              "机理建模",
+              "状态演化",
+              "初值问题"
+            ],
+            "assumptions": [
+              "系统状态连续且规律可用微分方程描述"
+            ],
+            "failure_modes": [
+              "参数辨识困难或刚性系统数值不稳定"
+            ],
+            "validation": [
+              "数值解收敛性",
+              "参数敏感性",
+              "残差拟合"
+            ]
+          },
+          {
+            "id": "pde-modeling",
+            "name": "偏微分方程建模",
+            "summary": "描述空间与时间上连续变化过程（扩散、波动、热传导等）",
+            "keywords": [
+              "偏微分方程",
+              "扩散",
+              "波动",
+              "空间分布"
+            ],
+            "assumptions": [
+              "介质连续且边界条件可设定"
+            ],
+            "failure_modes": [
+              "复杂几何与非线性时求解代价高"
+            ],
+            "validation": [
+              "网格收敛性",
+              "与解析解或实测对比"
+            ]
+          },
+          {
+            "id": "system-dynamics",
+            "name": "系统动力学",
+            "summary": "以存量-流量-反馈回路刻画复杂系统的长期动态行为",
+            "keywords": [
+              "系统动力学",
+              "存量流量",
+              "反馈回路",
+              "政策仿真"
+            ],
+            "assumptions": [
+              "系统关键回路与参数可识别"
+            ],
+            "failure_modes": [
+              "参数与结构主观性影响结论"
+            ],
+            "validation": [
+              "历史行为复现",
+              "极端参数压力测试"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "discrete-spatial-agent",
+        "name": "离散与空间模型",
+        "description": "在格点或空间单元上用局部规则模拟空间动态",
+        "keywords": [
+          "元胞自动机",
+          "空间扩散",
+          "离散仿真",
+          "格子"
+        ],
+        "methods": [
+          {
+            "id": "cellular-automaton",
+            "name": "元胞自动机",
+            "summary": "以局部规则在格点上迭代演化，模拟空间动态与相变现象",
+            "keywords": [
+              "元胞自动机",
+              "局部规则",
+              "格子演化",
+              "相变"
+            ],
+            "assumptions": [
+              "局部交互规则能代表真实机制"
+            ],
+            "failure_modes": [
+              "规则涌现行为难预测且对初值敏感"
+            ],
+            "validation": [
+              "相变临界性检查",
+              "与解析或实测对比"
+            ]
+          },
+          {
+            "id": "spatial-interaction-model",
+            "name": "空间交互模型",
+            "summary": "用引力或距离衰减刻画区域间流量与空间格局",
+            "keywords": [
+              "空间交互",
+              "引力模型",
+              "距离衰减",
+              "流量"
+            ],
+            "assumptions": [
+              "流量与规模、距离关系可参数化"
+            ],
+            "failure_modes": [
+              "忽略网络结构与政策干预时失真"
+            ],
+            "validation": [
+              "参数标定",
+              "残差空间自相关检查"
+            ]
+          },
+          {
+            "id": "percolation-model",
+            "name": "渗流模型",
+            "summary": "模拟连通性在随机介质中的形成与临界阈值",
+            "keywords": [
+              "渗流",
+              "连通性",
+              "临界阈值",
+              "随机介质"
+            ],
+            "assumptions": [
+              "可抽象为随机占据与连通判定"
+            ],
+            "failure_modes": [
+              "现实介质异质性使阈值估计困难"
+            ],
+            "validation": [
+              "临界概率模拟",
+              "蒙特卡洛重复"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "network-optimization-analysis",
+        "name": "网络优化与分析",
+        "description": "利用图论指标与优化方法分析网络结构与资源流动",
+        "keywords": [
+          "图论",
+          "最短路径",
+          "最大流",
+          "中心性",
+          "社区"
+        ],
+        "methods": [
+          {
+            "id": "shortest-path",
+            "name": "最短路径规划",
+            "summary": "在网络中求最小代价路径，适用于物流与路由规划",
+            "keywords": [
+              "最短路径",
+              "图论",
+              "Dijkstra",
+              "路由"
+            ],
+            "assumptions": [
+              "边权非负且网络结构已知"
+            ],
+            "failure_modes": [
+              "动态时变权重下静态解失效"
+            ],
+            "validation": [
+              "与暴力枚举小规模对比",
+              "动态场景压力测试"
+            ]
+          },
+          {
+            "id": "maximum-flow",
+            "name": "最大流模型",
+            "summary": "求解网络中从源到汇的最大传输量，识别瓶颈边",
+            "keywords": [
+              "最大流",
+              "瓶颈",
+              "容量约束",
+              "网络流"
+            ],
+            "assumptions": [
+              "容量与节点守恒假设成立"
+            ],
+            "failure_modes": [
+              "忽略转运成本与时间约束时过于简化"
+            ],
+            "validation": [
+              "割集验证",
+              "残余网络检查"
+            ]
+          },
+          {
+            "id": "centrality-analysis",
+            "name": "网络中心性分析",
+            "summary": "度量节点在网络中的重要程度（度、介数、特征向量等）",
+            "keywords": [
+              "中心性",
+              "度",
+              "介数",
+              "重要节点",
+              "网络结构"
+            ],
+            "assumptions": [
+              "网络数据结构完整且抽样无偏"
+            ],
+            "failure_modes": [
+              "抽样偏差与多关系网络使指标失真"
+            ],
+            "validation": [
+              "多种中心性交叉验证",
+              "子网络稳健性"
+            ]
+          },
+          {
+            "id": "community-detection",
+            "name": "社区发现",
+            "summary": "把网络划分为内部紧密、外部稀疏的模块，识别功能组团",
+            "keywords": [
+              "社区发现",
+              "模块度",
+              "社团结构",
+              "Louvain"
+            ],
+            "assumptions": [
+              "网络存在明显模块结构"
+            ],
+            "failure_modes": [
+              "分辨率极限与随机网络伪社区"
+            ],
+            "validation": [
+              "模块度与随机化基准对比",
+              "鲁棒性检查"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

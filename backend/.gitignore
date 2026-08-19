@@ -1,0 +1,16 @@
+venv/
+_pycache_/
+*.pyc
+.venv/
+.idea/
+.vscode/
+
+# Project specific
+project/work_dir/*
+!project/work_dir/.gitkeep
+.cursor/
+config/config.toml
+config/latex-template/
+logs/
+
+.env.dev

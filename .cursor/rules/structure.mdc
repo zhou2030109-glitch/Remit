@@ -1,0 +1,38 @@
+# 项目结构、核心功能与用户使用流程
+
+## 一、项目整体架构
+
+本项目采用前后端分离架构：
+- **frontend/**：前端，基于 Vue3 + TypeScript + Vite，主要负责用户界面与交互。
+- **backend/**：后端，基于 FastAPI，负责核心建模逻辑、任务调度与 WebSocket 通信。
+- **docker-compose.yml**：支持前后端及依赖服务的容器化部署。
+- **tools/**：Windows 桌面打包与生产启动工具链。
+
+### 主要目录说明
+- `frontend/src/pages/`：核心页面，包括 home（入口）、task（任务工作台）。
+- `frontend/src/pages/task/components/`：任务工作台组件（ProjectWorkspaceShell 为主壳）。
+- `backend/app/routers/`：API 路由，`modeling_router.py` 负责建模任务，`ws_router.py` 负责 WebSocket 实时通信，`files_router.py` 负责文件上传管理，`common_router.py` 负责前端静态资源托管。
+- `backend/app/core/`：核心业务逻辑，如 RemitWorkFlow（建模主流程）、多 Agent 协作与文献/方法检索。
+- `backend/app/models/`、`schemas/`、`utils/`：数据模型、请求响应结构、工具函数等。
+
+## 二、核心功能
+1. **数学建模任务自动化**：用户上传数据集、输入题目，系统自动完成问题拆解、代码生成、论文撰写等。
+2. **多 Agent 协作**：后端通过 CoderAgent、ModelerAgent、CoordinatorAgent、WriterAgent 等智能体协作完成建模与写作。
+3. **WebSocket 实时推送**：任务进度、结果通过 WebSocket 实时推送到前端。
+4. **文献与方法检索**：内置三级方法知识库，自动推荐候选建模方法并生成方法卡片。
+5. **文件上传与管理**：支持多种数据文件上传，自动归档到任务工作目录。
+
+## 三、用户使用流程
+1. **进入主页面（home）**：登录后进入任务列表。
+2. **创建并提交建模任务**：
+   - 粘贴完整题目、上传数据文件、选择模板与输出格式。
+   - 前端调用 `/modeling/` API，后端生成 task_id，异步处理建模任务。
+3. **任务工作台查看**：
+   - 自动跳转到 `/task/{task_id}` 页面。
+   - 前端通过 WebSocket 订阅任务进度、审批与结果。
+   - 在 ProjectWorkspaceShell 中查看问题分析、文献、模型、代码、论文等分栏内容。
+4. **下载与后续操作**：支持结果文件下载与格式转换。
+
+---
+
+如需详细 API 或组件说明，请参考 [frontend-rules.mdc](mdc:frontend-rules.mdc) 与 [backend-rules.mdc](mdc:backend-rules.mdc)。

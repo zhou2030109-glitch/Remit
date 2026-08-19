@@ -1,0 +1,8 @@
+# 本地覆盖层：固定容器名，便于脚本引用。
+services:
+  redis:
+    container_name: remit_redis
+  backend:
+    container_name: remit_backend
+  frontend:
+    container_name: remit_frontend

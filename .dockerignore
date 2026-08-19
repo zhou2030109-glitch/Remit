@@ -1,0 +1,17 @@
+# IDE settings
+.idea/
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# macOS
+.DS_Store
+
+# Other temp files or OS-specific files
+*.swp
+Thumbs.db
+
+docs/
+.cursor

@@ -1,0 +1,27 @@
+.vscode/
+*.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.idea/
+settings.local.json
+dump.rdb
+backend/.env.dev
+backend/.env.council
+**/.env.dev
+**/.env.council
+.trae/
+logs/
+__pycache__/
+*.pyc
+
+# 临时调试脚本
+backend/*_tmp.py
+# 运行时产物与本地依赖
+backend/project/repair_backups/
+backend/venv/
+backend/.venv/
+tmp/
+# 微软版权字体：仅保留在本地，不随仓库分发（打包时由本地复制）
+backend/fonts/simhei.ttf

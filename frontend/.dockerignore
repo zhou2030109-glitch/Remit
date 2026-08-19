@@ -1,0 +1,40 @@
+# frontend/.dockerignore
+
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+.output/
+.nuxt/
+# (根据你的前端框架和构建工具，可能还有其他构建输出目录)
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files (通常通过 docker-compose volumes 或 env_file 管理)
+.env
+.env*.local
+.env*.production
+# (除非你有特定的 .env 文件是用于构建过程且不含敏感信息)
+
+# IDE settings
+.idea/
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# macOS
+.DS_Store
+
+# Other temp files or OS-specific files
+*.swp
+Thumbs.db

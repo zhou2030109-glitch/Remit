@@ -1,0 +1,59 @@
+# Remit 全栈开发环境：Redis + 后端 + 前端
+# 三个服务使用 Remit 专属主机端口，避免与本机其他项目冲突。
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: remit_redis
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: remit_backend
+    ports:
+      - "18000:8000"
+    env_file:
+      - ./backend/.env.dev
+    environment:
+      ENV: DEV
+      REDIS_URL: redis://redis:6379/0
+      SERVER_HOST: http://localhost:18000
+      CORS_ALLOW_ORIGINS: http://localhost:15173,http://127.0.0.1:15173
+    volumes:
+      # 源码热重载
+      - ./backend:/app
+      # 任务产物持久化
+      - ./backend/project/work_dir:/app/project/work_dir
+      # 依赖环境复用，避免重复构建
+      - backend_venv:/app/.venv
+    depends_on:
+      - redis
+    stdin_open: true
+    tty: true
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: remit_frontend
+    ports:
+      - "15173:5173"
+    env_file:
+      - ./frontend/.env.development
+    volumes:
+      - ./frontend:/app
+      # 匿名卷隔离容器内依赖，防止被主机 node_modules 覆盖
+      - /app/node_modules
+    depends_on:
+      - backend
+    stdin_open: true
+    tty: true
+
+volumes:
+  redis_data:
+  backend_venv:

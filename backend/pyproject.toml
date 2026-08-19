@@ -1,0 +1,92 @@
+[project]
+name = "remit-backend"
+version = "0.1.0"
+description = "Backend services for the Remit mathematical modeling workbench"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # Web 框架与实时通道
+    "fastapi[standard]>=0.115.8",
+    "uvicorn[standard]>=0.34.0",
+    "websocket>=0.2.1",
+    "aiofile>=3.9.0",
+    # 任务队列与状态存储
+    "celery>=5.4.0",
+    "redis>=5.2.1",
+    "aioredis>=2.0.1",
+    # LLM 供应商 SDK 与 HTTP 客户端
+    "openai>=1.65.4",
+    "anthropic>=0.40.0",
+    "httpx[socks]>=0.28.1",
+    "requests>=2.32.0",
+    # 配置与数据校验
+    "pydantic>=2.10.6",
+    "pydantic-settings>=2.8.0",
+    # 代码执行（本地 Jupyter 内核 / E2B 沙箱）
+    "ipykernel>=6.29.5",
+    "jupyter-client>=8.6.3",
+    "nbformat>=5.10.4",
+    "e2b-code-interpreter>=1.0.5",
+    # 科学计算与建模
+    "numpy>=2.2.5",
+    "pandas>=2.2.3",
+    "scipy>=1.15.2",
+    "scikit-learn>=1.6.1",
+    "statsmodels>=0.14.4",
+    "xgboost>=3.0.0",
+    "shap>=0.51.0",
+    # 可视化
+    "matplotlib>=3.10.1",
+    "seaborn>=0.13.2",
+    # 文献检索与向量检索
+    "semanticscholar>=0.10.0",
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    "rank-bm25>=0.2.2",
+    # 文档读写与转换
+    "openpyxl>=3.1.5",
+    "xlrd>=2.0.1",
+    "pymupdf>=1.24.0",
+    "python-docx>=1.1.2",
+    "pypandoc-binary>=1.15",
+    "pillow>=11.0.0",
+    "ansi2html>=1.9.2",
+    # 桌面壳（托盘 / 内嵌窗口）
+    "pystray>=0.19.5",
+    "pywebview>=6.2.1",
+    # 日志与调试
+    "loguru>=0.7.3",
+    "icecream>=2.1.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.9.10",
+]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+exclude = [
+    ".git",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "__pypackages__",
+    "build",
+    "dist",
+    "node_modules",
+]
+
+[tool.ruff.lint]
+# Pyflakes (F) 加 pycodestyle 错误子集（E4/E7/E9）
+select = ["E4", "E7", "E9", "F"]
+fixable = ["ALL"]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style = "double"
+skip-magic-trailing-comma = false
+line-ending = "auto"
