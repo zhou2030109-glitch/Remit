@@ -30,7 +30,7 @@
     "vue-router": "4"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
+    "@biomejs/biome": "2.5.10",
     "@types/katex": "^0.16.7",
     "@types/marked": "^6.0.0",
     "@types/node": "^22.13.5",
