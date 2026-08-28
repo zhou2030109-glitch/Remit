@@ -15,8 +15,8 @@ importers:
         specifier: ^1.8.4
         version: 1.8.4
       katex:
-        specifier: ^0.16.22
-        version: 0.16.22
+        specifier: ^0.18.4
+        version: 0.18.4
       lucide-vue-next:
         specifier: ^0.475.0
         version: 0.475.0(vue@3.5.13(typescript@5.7.3))
@@ -46,8 +46,8 @@ importers:
         specifier: 1.9.4
         version: 1.9.4
       '@types/katex':
-        specifier: ^0.16.7
-        version: 0.16.7
+        specifier: ^0.16.8
+        version: 0.16.8
       '@types/marked':
         specifier: ^6.0.0
         version: 6.0.0
@@ -479,8 +479,8 @@ packages:
   '@types/estree@1.0.6':
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
 
-  '@types/katex@0.16.7':
-    resolution: {integrity: sha512-HMwFiRujE5PjrgwHQ25+bsLJgowjGjm5Z8FVSf0N6PwgJrwxH0QxzHYDcKsTfV3wva0vzrpqMTJS2jXPr5BMEQ==}
+  '@types/katex@0.16.8':
+    resolution: {integrity: sha512-trgaNyfU+Xh2Tc+ABIb44a5AYUpicB3uwirOioeOkNPPbmgRNtcWyDeeFRzjPZENO9Vq8gvVqfhaaXWLlevVwg==}
 
   '@types/marked@6.0.0':
     resolution: {integrity: sha512-jmjpa4BwUsmhxcfsgUit/7A9KbrC48Q0q8KvnY107ogcjGgTFDlIL3RpihNpx2Mu1hM4mdFQjoVc4O6JoGKHsA==}
@@ -896,8 +896,8 @@ packages:
     resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
     hasBin: true
 
-  katex@0.16.22:
-    resolution: {integrity: sha512-XCHRdUw4lf3SKBaJe4EvgqIuWwkPSo9XoeO8GjQW94Bp7TWv9hNhzZjZ+OH9yf1UmLygb7DIT5GSFQiyt16zYg==}
+  katex@0.18.4:
+    resolution: {integrity: sha512-IMPntbRLOU+eu88XDiFKqQ8Akhr9Tv7jDMXqPhjG9SI1JMA4DIgXk4x9k4skJz2NZJXBRbC+2pYBLj9olqcZow==}
     hasBin: true
 
   lilconfig@3.1.3:
@@ -1581,7 +1581,7 @@ snapshots:
 
   '@types/estree@1.0.6': {}
 
-  '@types/katex@0.16.7': {}
+  '@types/katex@0.16.8': {}
 
   '@types/marked@6.0.0':
     dependencies:
@@ -2040,7 +2040,7 @@ snapshots:
 
   jiti@1.21.7: {}
 
-  katex@0.16.22:
+  katex@0.18.4:
     dependencies:
       commander: 8.3.0
 
