@@ -55,7 +55,8 @@ class UserConfigPathTests(unittest.TestCase):
     def test_ui_save_and_new_process_loading_use_the_same_config_location(self):
         for override in (None, "", "custom"):
             with self.subTest(override=override), tempfile.TemporaryDirectory() as tmp:
-                root = Path(tmp)
+                # 对齐 macOS /var 链接和 Windows 临时目录短路径的规范形式。
+                root = Path(tmp).resolve()
                 backend = root / "backend"
                 setting_file = backend / "app" / "config" / "setting.py"
                 setting_file.parent.mkdir(parents=True)
