@@ -6,10 +6,12 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from fastapi import BackgroundTasks, HTTPException
 
+from app.core.workflow import RemitWorkFlow
 from app.core.workflow_checkpoint import WorkflowCheckpoint
 from app.routers.modeling_router import (
     ResumeTaskRequest,
@@ -83,6 +85,51 @@ class WorkflowResumeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(nodes[-1]["node_id"], "solve:ques2")
             self.assertEqual(nodes[-1]["status"], "interrupted")
             self.assertNotIn("solve:ques3", {node["node_id"] for node in nodes})
+
+    def test_project_execution_backend_survives_checkpoint_reload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            checkpoint = WorkflowCheckpoint(tmp)
+            checkpoint.initialize(
+                Problem(
+                    task_id="python-project",
+                    ques_all="建立预测模型",
+                    execution_backend="python",
+                )
+            )
+
+            restored = Problem.model_validate(checkpoint.load()["problem"])
+
+            self.assertEqual(restored.execution_backend, "python")
+
+    async def test_interpreter_uses_backend_saved_in_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            checkpoint = WorkflowCheckpoint(tmp)
+            state = checkpoint.initialize(
+                Problem(
+                    task_id="python-project",
+                    ques_all="建立预测模型",
+                    execution_backend="python",
+                )
+            )
+            workflow = RemitWorkFlow()
+            workflow.task_id = "python-project"
+            workflow.work_dir = tmp
+            workflow.checkpoint = checkpoint
+            interpreter = SimpleNamespace(language="python", backend_name="本地 Python")
+
+            with (
+                patch(
+                    "app.core.workflow.create_interpreter",
+                    new=AsyncMock(return_value=interpreter),
+                ) as create,
+                patch(
+                    "app.core.workflow.redis_manager.publish_message",
+                    new=AsyncMock(),
+                ),
+            ):
+                await workflow._initialize_interpreter(state)
+
+            self.assertEqual(create.await_args.kwargs["preferred_backend"], "python")
 
     def test_resuming_earlier_node_invalidates_downstream_without_deleting_inputs(
         self,

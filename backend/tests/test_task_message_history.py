@@ -271,6 +271,7 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
                 user_requirements="问题1输出预测值",
                 comp_template=CompTemplate.CHINA,
                 format_output=FormatOutPut.Markdown,
+                execution_backend="python",
                 files=None,
             )
 
@@ -282,6 +283,9 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("问题1输出预测值", initial.content)
         self.assertEqual(len(background_tasks.tasks), 1)
         self.assertEqual(background_tasks.tasks[0].args[3], FormatOutPut.LaTeX)
+        self.assertEqual(
+            background_tasks.tasks[0].kwargs["execution_backend"], "python"
+        )
 
 
 if __name__ == "__main__":

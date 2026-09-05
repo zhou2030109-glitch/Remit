@@ -10,7 +10,7 @@ from app.core.workflow_checkpoint import (
 from app.schemas.enums import CompTemplate, FormatOutPut
 from app.utils.log_util import logger
 from app.services.redis_manager import redis_manager
-from app.schemas.request import Problem
+from app.schemas.request import ExecutionBackend, Problem
 from app.schemas.response import ApprovalMessage, SystemMessage, UserMessage
 from app.utils.common_utils import (
     create_task_id,
@@ -299,6 +299,7 @@ async def _schedule_new_task(
     template: CompTemplate,
     output_format: FormatOutPut,
     user_requirements: str = "",
+    execution_backend: ExecutionBackend | None = None,
 ) -> dict[str, str]:
     """Publish the initial event and hand execution to FastAPI's task runner."""
     # 继续接受旧客户端的 Markdown 枚举值，但最终交付契约固定为 PDF + LaTeX。
@@ -328,6 +329,7 @@ async def _schedule_new_task(
         template,
         output_format,
         user_requirements,
+        execution_backend=execution_backend,
     )
     logger.info(f"任务 {task_id} 已进入后台执行队列")
     return {"task_id": task_id, "status": "processing"}
@@ -369,6 +371,7 @@ async def submit_modeling(
     user_requirements: str = Form(""),  # 用户额外交付要求，独立于题目原文
     comp_template: CompTemplate = Form(...),  # 从表单获取
     format_output: FormatOutPut = Form(...),  # 从表单获取
+    execution_backend: ExecutionBackend | None = Form(None),
     files: list[UploadFile] = File(default=None),
 ):
     task_id = create_task_id()
@@ -396,6 +399,7 @@ async def submit_modeling(
         template=comp_template,
         output_format=format_output,
         user_requirements=user_requirements,
+        execution_backend=execution_backend,
     )
 
 
@@ -407,6 +411,7 @@ async def run_modeling_task_async(
     user_requirements: str = "",
     resume_from: str | None = None,
     continue_existing: bool = False,
+    execution_backend: ExecutionBackend | None = None,
 ):
     """Execute a fresh or resumed workflow outside the request lifecycle."""
     logger.info(f"开始后台建模任务: {task_id}")
@@ -417,6 +422,7 @@ async def run_modeling_task_async(
         user_requirements=user_requirements,
         comp_template=comp_template,
         format_output=format_output,
+        execution_backend=execution_backend,
     )
 
     # 创建取消信号
@@ -539,6 +545,7 @@ async def run_modeling_task_async(
                     format_output,
                     user_requirements,
                     delay_seconds,
+                    execution_backend,
                 )
             )
             _auto_resume_handles.add(resume_handle)
@@ -572,6 +579,7 @@ async def _auto_resume_after_failure(
     format_output: FormatOutPut,
     user_requirements: str,
     delay_seconds: int,
+    execution_backend: ExecutionBackend | None = None,
 ) -> None:
     """失败后延迟自动续跑；用户已手动干预或状态变化时放弃。"""
     await asyncio.sleep(delay_seconds)
@@ -607,6 +615,7 @@ async def _auto_resume_after_failure(
             format_output,
             user_requirements,
             continue_existing=True,
+            execution_backend=execution_backend,
         )
     except Exception as exc:
         logger.error(f"任务 {task_id} 自动续跑调度失败: {exc}")
@@ -782,6 +791,7 @@ async def submit_approval(
         problem.user_requirements,
         None,
         True,
+        execution_backend=problem.execution_backend,
     )
     return SubmitApprovalResponse(
         success=True,
@@ -863,6 +873,7 @@ async def resume_task(
         problem.format_output,
         problem.user_requirements,
         request.node_id,
+        execution_backend=problem.execution_backend,
     )
     return ResumeTaskResponse(
         success=True,

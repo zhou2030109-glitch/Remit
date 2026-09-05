@@ -110,6 +110,33 @@ class MatlabInterpreterTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(metadata["python_fallback"])
             self.assertIn("license unavailable", metadata["fallback_reason"])
 
+    async def test_project_python_override_skips_matlab_probe(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            notebook = NotebookSerializer(work_dir=tmp)
+            with (
+                patch.object(settings, "CODE_EXECUTION_BACKEND", "matlab"),
+                patch.object(
+                    MatlabCodeInterpreter,
+                    "initialize",
+                    new=AsyncMock(),
+                ) as matlab_initialize,
+                patch.object(
+                    LocalCodeInterpreter,
+                    "initialize",
+                    new=AsyncMock(),
+                ) as python_initialize,
+            ):
+                interpreter = await create_interpreter(
+                    task_id="python-project",
+                    work_dir=tmp,
+                    notebook_serializer=notebook,
+                    preferred_backend="python",
+                )
+
+            self.assertIsInstance(interpreter, LocalCodeInterpreter)
+            matlab_initialize.assert_not_awaited()
+            python_initialize.assert_awaited_once()
+
     async def test_matlab_failure_is_fatal_when_fallback_disabled(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             with (
