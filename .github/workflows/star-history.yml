@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: narayann7/star-history-action@4725f3547e0b75212e1e64766b7c5fca424f5477 # v1.0.6
+      - uses: narayann7/star-history-action@12543ab7352b91fb7c5eb0c4fbb39772baa0c168 # v1.0.6
         with:
           update-readme: "false"
           commit: "false"
