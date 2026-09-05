@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import tempfile
-import time
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -70,19 +70,39 @@ class LocalExecutionWatchdogTests(unittest.IsolatedAsyncioTestCase):
             )
             interpreter.kc = MagicMock()
             interpreter.km = MagicMock()
-            interpreter._run_raw = MagicMock(
-                side_effect=lambda code: (time.sleep(0.2) or [])
-            )
-            interpreter._recover_kernel_after_timeout = AsyncMock()
-            interpreter._push_to_websocket = AsyncMock()
-            ready = asyncio.Event()
-            heartbeat_delay: list[float] = []
+            loop = asyncio.get_running_loop()
+            loop_thread = threading.get_ident()
+            worker_started = asyncio.Event()
+            loop_progressed = asyncio.Event()
+            release_worker = threading.Event()
+            worker_finished = threading.Event()
+            worker_threads: list[int] = []
+            execution_order: list[str] = []
 
-            async def event_loop_probe() -> None:
-                started = time.perf_counter()
-                ready.set()
-                await asyncio.sleep(0.01)
-                heartbeat_delay.append(time.perf_counter() - started)
+            def blocked_execution(_code: str) -> list:
+                worker_threads.append(threading.get_ident())
+                execution_order.append("worker_started")
+                loop.call_soon_threadsafe(worker_started.set)
+                try:
+                    self.assertNotEqual(threading.get_ident(), loop_thread)
+                    if not release_worker.wait(10):
+                        raise TimeoutError("测试未释放执行线程")
+                    return []
+                finally:
+                    execution_order.append("worker_finished")
+                    worker_finished.set()
+
+            async def recover(worker: asyncio.Task) -> None:
+                # 超时可以先于线程调度发生；等待握手，避免 CI 负载影响顺序。
+                await asyncio.wait_for(loop_progressed.wait(), timeout=10)
+                self.assertFalse(worker_finished.is_set())
+                execution_order.append("recovery")
+                release_worker.set()
+                await asyncio.wait_for(asyncio.shield(worker), timeout=10)
+
+            interpreter._run_raw = MagicMock(side_effect=blocked_execution)
+            interpreter._recover_kernel_after_timeout = AsyncMock(side_effect=recover)
+            interpreter._push_to_websocket = AsyncMock()
 
             with (
                 patch(
@@ -96,17 +116,30 @@ class LocalExecutionWatchdogTests(unittest.IsolatedAsyncioTestCase):
                     create=True,
                 ),
             ):
-                probe = asyncio.create_task(event_loop_probe())
-                await ready.wait()
-                output, failed, error = await interpreter.execute_code(
-                    "value = 1"
-                )
-                await probe
+                execution = asyncio.create_task(interpreter.execute_code("value = 1"))
+                try:
+                    await asyncio.wait_for(worker_started.wait(), timeout=10)
+                    # 线程仍在阻塞时，本协程已被事件循环调度，证明循环未被占住。
+                    self.assertEqual(len(worker_threads), 1)
+                    self.assertNotEqual(worker_threads[0], loop_thread)
+                    self.assertFalse(worker_finished.is_set())
+                    execution_order.append("loop_progressed")
+                    loop_progressed.set()
+                    output, failed, error = await asyncio.wait_for(execution, timeout=10)
+                finally:
+                    release_worker.set()
+                    loop_progressed.set()
+                    if not execution.done():
+                        execution.cancel()
+                    await asyncio.gather(execution, return_exceptions=True)
 
             self.assertTrue(failed)
             self.assertIn("执行超过", output)
             self.assertEqual(error, output)
-            self.assertLess(heartbeat_delay[0], 0.08)
+            self.assertEqual(
+                execution_order,
+                ["worker_started", "loop_progressed", "recovery", "worker_finished"],
+            )
             interpreter._recover_kernel_after_timeout.assert_awaited_once()
 
 
