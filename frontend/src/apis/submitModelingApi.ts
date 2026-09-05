@@ -25,11 +25,14 @@ export interface ProblemPdfParseResult {
 	figures: ProblemFigureInsight[];
 }
 
+export type ExecutionBackend = "matlab" | "python";
+
 export type ModelingSubmission = Readonly<{
 	ques_all: string;
 	user_requirements?: string;
 	comp_template?: string;
 	format_output?: string;
+	execution_backend?: ExecutionBackend;
 }>;
 
 export type ModelingTaskReceipt = {
@@ -63,6 +66,7 @@ export function submitModelingTask(
 		user_requirements: problem.user_requirements ?? "",
 		comp_template: problem.comp_template ?? "CHINA",
 		format_output: problem.format_output ?? "LaTeX",
+		execution_backend: problem.execution_backend ?? "matlab",
 	};
 	for (const [name, value] of Object.entries(fields)) {
 		formData.set(name, value);
