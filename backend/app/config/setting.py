@@ -14,7 +14,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
-USER_CONFIG_PATH = BACKEND_ROOT / ".env.user"
+# 容器需要挂载配置目录，使保存时的原子替换发生在同一文件系统。
+# 在启动时统一解析路径，设置加载与界面保存必须使用同一个位置。
+_USER_CONFIG_OVERRIDE = os.getenv("REMIT_USER_CONFIG_PATH", "").strip()
+USER_CONFIG_PATH = (
+    Path(_USER_CONFIG_OVERRIDE).expanduser().resolve()
+    if _USER_CONFIG_OVERRIDE
+    else BACKEND_ROOT / ".env.user"
+)
 
 
 class ApiType(str, Enum):

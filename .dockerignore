@@ -1,17 +1,40 @@
-# IDE settings
-.idea/
-.vscode/
-
-# Git
-.git/
-.gitignore
-
-# macOS
-.DS_Store
-
-# Other temp files or OS-specific files
-*.swp
-Thumbs.db
-
-docs/
-.cursor
+# 发布镜像只接收源码、锁文件和许可证；本机配置与任务资料不进入上下文。
+**
+!backend/
+backend/*
+!backend/app/
+!backend/app/**
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/README.md
+!frontend/
+frontend/*
+!frontend/src/
+!frontend/src/**
+!frontend/public/
+!frontend/public/**
+!frontend/package.json
+!frontend/pnpm-lock.yaml
+!frontend/index.html
+!frontend/tsconfig.json
+!frontend/tsconfig.app.json
+!frontend/tsconfig.node.json
+!frontend/vite.config.ts
+!frontend/tailwind.config.js
+!LICENSE
+!NOTICE.md
+!THIRD_PARTY_NOTICES.md
+**/.env*
+**/__pycache__/
+**/*.pyc
+**/*.log
+**/logs/
+**/project/
+**/uploads/
+**/outputs/
+**/node_modules/
+**/.venv/
+**/.git/
+**/.pytest_cache/
+**/.ruff_cache/
+frontend/dist/

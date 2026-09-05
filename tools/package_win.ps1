@@ -67,6 +67,31 @@ function Write-Utf8NoBom {
     [IO.File]::WriteAllText($Path, $text, (New-Object System.Text.UTF8Encoding($false)))
 }
 
+function Install-InnoChineseLanguage {
+    param([string]$CompilerDirectory)
+    # Inno Setup 6.7.3 的安装程序未捆绑简体中文；固定官方源文件版本与摘要。
+    $languagePath = Join-Path $CompilerDirectory "Languages\ChineseSimplified.isl"
+    $languageHash = "E0B0B350E2245F3C5E65586DFE43D574F6E7F06F2261149ABA284954B3FC9A8D"
+    if ((Test-Path -LiteralPath $languagePath) -and
+        (Get-FileHash -LiteralPath $languagePath -Algorithm SHA256).Hash -eq $languageHash) {
+        return
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $languagePath) | Out-Null
+    $downloadPath = "$languagePath.download"
+    try {
+        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/6ef32198ef1f7b7b375cd4b6b90896c2a58eb4c2/Files/Languages/ChineseSimplified.isl" -OutFile $downloadPath -UseBasicParsing
+        if ((Get-FileHash -LiteralPath $downloadPath -Algorithm SHA256).Hash -ne $languageHash) {
+            throw "Inno Setup 简体中文语言文件校验失败"
+        }
+        Move-Item -LiteralPath $downloadPath -Destination $languagePath -Force
+    }
+    finally {
+        if (Test-Path -LiteralPath $downloadPath) {
+            Remove-Item -LiteralPath $downloadPath -Force
+        }
+    }
+}
+
 Write-Host "========== Remit 打包开始 =========="
 
 # ---------- 0. 校验输入 ----------
@@ -132,7 +157,7 @@ $envLines = Get-Content -LiteralPath (Join-Path $RepoRoot "backend\.env.example"
 $envOverrides = @{
     "^ENV=.*" = "ENV=dev"
     "^REDIS_URL=.*" = "REDIS_URL=redis://127.0.0.1:16379/0"
-    "^CORS_ALLOW_ORIGINS=.*" = "CORS_ALLOW_ORIGINS=*"
+    "^CORS_ALLOW_ORIGINS=.*" = "CORS_ALLOW_ORIGINS=http://localhost:18000,http://127.0.0.1:18000"
     "^SERVER_HOST=.*" = "SERVER_HOST=http://localhost:18000"
     "^LOG_LEVEL=.*" = "LOG_LEVEL=INFO"
     "^DEBUG=.*" = "DEBUG=false"
@@ -232,7 +257,7 @@ Write-Utf8NoBom -Path (Join-Path $Stage "使用说明.txt") -Lines @(
     "",
     "三、MATLAB 说明（重点）",
     "  本软件不需要安装 MATLAB。默认优先使用 MATLAB（自动探测 PATH 与常见安装目录），",
-    "  检测不到 MATLAB 时自动回退到内置的 Python 计算环境，全部功能正常可用。",
+    "  检测不到 MATLAB 时自动回退到内置的 Python 计算环境，建模计算正常可用。",
     "  无需任何额外配置；界面中会提示当前使用的计算后端。",
     "",
     "四、常见问题",
@@ -242,7 +267,11 @@ Write-Utf8NoBom -Path (Join-Path $Stage "使用说明.txt") -Lines @(
     "  4. 日志位置：安装目录 logs\ 目录。",
     "  5. 源码与许可证：请阅读安装目录中的 LICENSE、NOTICE.md 与 THIRD_PARTY_NOTICES.md。",
     "",
-    "五、来源与许可",
+    "五、论文 PDF 导出",
+    "  安装包不包含 LaTeX 发行版。导出最终论文 PDF 需要另行安装 MiKTeX 或 TeX Live，",
+    "  并确保 xelatex 已加入 PATH。缺少编译器时应用会提示，不影响 Python 建模计算。",
+    "",
+    "六、来源与许可",
     "  当前源码已完成针对 MathModelAgent 的独立实现整改。",
     "  早期版本来源、扫描边界和许可提示请阅读安装目录中的 NOTICE.md。",
     "  当前 Remit 自有源码使用 MIT License；第三方文件保留各自许可。",
@@ -292,7 +321,7 @@ foreach ($target in $secretTargets) {
     }
 }
 if ($leaks.Count -gt 0) {
-    throw "检测到疑似密钥泄漏，已中止打包：" + $nl + ($leaks -join $nl)
+    throw "检测到疑似密钥泄漏，已中止打包：" + [Environment]::NewLine + ($leaks -join [Environment]::NewLine)
 }
 Write-Host "  未发现真实密钥，打包安全。"
 # ---------- 8. 生成安装包 ----------
@@ -311,12 +340,13 @@ if (-not (Test-Path -LiteralPath $IsccExe)) {
     }
     Write-Host "  便携模式解压 Inno Setup..."
     New-Item -ItemType Directory -Force -Path $InnoDir | Out-Null
-    $installProc = Start-Process -FilePath $InnoDownload -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/PORTABLE=1", "/DIR=`"$InnoDir`"") -PassThru -Wait
+    $installProc = Start-Process -FilePath $InnoDownload -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/PORTABLE=1", "/DIR=`"$InnoDir`"") -WindowStyle Hidden -PassThru -Wait
     if ($installProc.ExitCode -ne 0) {
         throw "Inno Setup 便携安装失败，退出码 $($installProc.ExitCode)"
     }
 }
 Assert-Path -Path $IsccExe -Message "ISCC.exe 不可用"
+Install-InnoChineseLanguage -CompilerDirectory $InnoDir
 
 Write-Host "[7/7] 编译安装包 RemitSetup.exe..."
 Push-Location (Join-Path $RepoRoot "tools\installer")

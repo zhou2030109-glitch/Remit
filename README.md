@@ -143,6 +143,8 @@ docker compose up --build
 
 前端默认端口为 `15173`，后端为 `18000`，Redis 为 `16379`。
 
+需要可直接运行的生产镜像或离线安装包时，见[发布包构建与使用](docs/distribution.md)。
+
 ## 模型配置
 
 编辑本地的 `backend/.env.dev`。四个核心角色采用相同字段结构：

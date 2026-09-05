@@ -5,6 +5,13 @@
 `.env.user`，因此后端重启后密钥仍然生效。该文件包含本机 API 凭据，
 已被 Git 忽略，请勿分享或提交。手工修改环境文件后需要重启后端。
 
+可在后端进程启动前设置 `REMIT_USER_CONFIG_PATH`，指定用户配置文件的绝对路径；
+未设置或留空时仍使用 `backend/.env.user`。界面保存、默认配置加载和
+`Settings.from_env()` 均使用这个路径。Docker 可设置
+`REMIT_USER_CONFIG_PATH=/app/config/.env.user` 并持久化整个 `/app/config` 目录。
+请勿只绑定挂载 `.env.user` 单个文件：保存会先写同目录临时文件，再原子替换目标文件。
+这个路径选项需要通过进程环境变量传入，不能写在待加载的 `.env.user` 内。
+
 ## 核心模型
 
 四个核心前缀为：

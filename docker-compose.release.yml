@@ -1,0 +1,47 @@
+# 发布环境：前后端合一，直接使用已构建镜像；不挂载源码或本机密钥。
+name: remit-release
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  remit:
+    image: ${REMIT_IMAGE:-remit:0.1.0}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SOURCE_REVISION: ${SOURCE_REVISION:-unknown}
+    init: true
+    ports:
+      - "127.0.0.1:${REMIT_PORT:-18000}:8000"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      SERVER_HOST: http://localhost:${REMIT_PORT:-18000}
+      REMIT_USER_CONFIG_PATH: /app/config/.env.user
+      CODE_EXECUTION_BACKEND: python
+      LOG_LEVEL: INFO
+      DEBUG: "false"
+    volumes:
+      - remit_config:/app/config
+      - remit_project:/app/backend/project
+      - remit_logs:/app/backend/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  remit_config:
+  remit_project:
+  remit_logs:

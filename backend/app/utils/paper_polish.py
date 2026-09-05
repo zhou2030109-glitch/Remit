@@ -1078,8 +1078,19 @@ def build_pdf_header(
     comp_template: CompTemplate = CompTemplate.CHINA,
 ) -> str:
     """Create a portable XeLaTeX header for the selected competition."""
-    _ = resource_path
     paper = "a4paper" if comp_template == CompTemplate.CHINA else "letterpaper"
+    if (resource_path / "simhei.ttf").is_file():
+        cjk_font = r"""\setCJKmainfont[
+  Path=./,
+  BoldFont=simhei.ttf
+]{simhei.ttf}"""
+    else:
+        # Docker 使用系统字体；Fandol 兼容未安装 Noto 的 TeX 发行版。
+        cjk_font = r"""\IfFontExistsTF{Noto Sans CJK SC}{
+  \setCJKmainfont{Noto Sans CJK SC}
+}{
+  \setCJKmainfont[BoldFont=FandolSong-Bold]{FandolSong-Regular}
+}"""
     return f"""
 \\usepackage[{paper},top=2.4cm,bottom=2.3cm,left=2.5cm,right=2.5cm]{{geometry}}
 \\usepackage{{fontspec}}
@@ -1087,10 +1098,7 @@ def build_pdf_header(
 \\usepackage{{amsmath,amssymb}}
 \\usepackage{{booktabs,longtable,array,graphicx,float}}
 \\IfFontExistsTF{{Times New Roman}}{{\\setmainfont{{Times New Roman}}}}{{\\setmainfont{{TeX Gyre Termes}}}}
-\\setCJKmainfont[
-  Path=./,
-  BoldFont=simhei.ttf
-]{{simhei.ttf}}
+{cjk_font}
 \\IfFontExistsTF{{Arial}}{{\\setsansfont{{Arial}}}}{{\\setsansfont{{TeX Gyre Heros}}}}
 \\IfFontExistsTF{{Consolas}}{{\\setmonofont{{Consolas}}}}{{\\setmonofont{{Latin Modern Mono}}}}
 \\XeTeXlinebreaklocale "zh"

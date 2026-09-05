@@ -15,7 +15,8 @@ DefaultGroupName=Remit
 UninstallDisplayIcon={app}\assets\remit-m-icon.ico
 OutputDir={#OutDir}
 OutputBaseFilename=RemitSetup
-Compression=lzma2/ultra
+; max 降低大体积 Python 运行时的编译内存占用，避免与其他构建争用内存。
+Compression=lzma2/max
 SolidCompression=yes
 PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
