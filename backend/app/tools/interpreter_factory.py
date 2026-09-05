@@ -25,6 +25,7 @@ async def create_interpreter(
     work_dir: str,
     notebook_serializer: NotebookSerializer,
     timeout: float = 3000,
+    preferred_backend: Literal["matlab", "python"] | None = None,
 ) -> BaseCodeInterpreter:
     """创建计算后端。
 
@@ -34,6 +35,7 @@ async def create_interpreter(
         work_dir: 任务工作目录。
         notebook_serializer: 执行记录序列化器。
         timeout: 单次代码执行上限。
+        preferred_backend: 项目级首选后端；为空时读取全局配置。
 
     Returns:
         已通过启动探测的 MATLAB 或 Python 解释器。
@@ -53,7 +55,7 @@ async def create_interpreter(
         await remote.initialize(timeout=timeout)  # type: ignore[reportCallIssue]
         return remote
 
-    preferred = settings.CODE_EXECUTION_BACKEND.strip().lower()
+    preferred = (preferred_backend or settings.CODE_EXECUTION_BACKEND).strip().lower()
     if preferred not in {"matlab", "python"}:
         raise ValueError(f"未知 CODE_EXECUTION_BACKEND: {preferred}")
 

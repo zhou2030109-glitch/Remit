@@ -1272,12 +1272,19 @@ class RemitWorkFlow(WorkFlow):
             SystemMessage(content="正在创建代码沙盒环境"),
         )
         notebook_serializer = NotebookSerializer(work_dir=self.work_dir)
+        problem_data = state.get("problem")
+        preferred_backend = (
+            problem_data.get("execution_backend")
+            if isinstance(problem_data, dict)
+            else None
+        )
         self.code_interpreter = await create_interpreter(
             kind="local",
             task_id=self.task_id,
             work_dir=self.work_dir,
             notebook_serializer=notebook_serializer,
             timeout=int(settings.MATLAB_EXECUTION_TIMEOUT_SECONDS),
+            preferred_backend=preferred_backend,
         )
         assert self.checkpoint is not None
         state["execution_backend"] = {
