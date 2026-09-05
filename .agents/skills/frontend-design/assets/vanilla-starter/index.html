@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Avant Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Newsreader:opsz,wght@6..72,400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="grain"></div>
+  <header class="top-bar">
+    <div class="logo">Avant Studio</div>
+    <nav>
+      <a href="#main">Work</a>
+      <a href="#process">Process</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <button class="cta">Start a project</button>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Design lab</p>
+        <h1>Striking, production-ready frontends without the generic glaze.</h1>
+        <p class="lede">We craft visceral digital spaces that move fast, feel tactile, and stay memorable. Built with intent, tuned for launch.</p>
+        <div class="actions">
+          <button class="cta primary">See capabilities</button>
+          <button class="ghost">View a live concept</button>
+        </div>
+        <div class="stats">
+          <div><span>42</span> shipped sites</div>
+          <div><span>95%</span> lighthouse perf</div>
+          <div><span>0</span> generic templates</div>
+        </div>
+      </div>
+      <div class="hero-card reveal">
+        <div class="tag">Now launching</div>
+        <div class="card-body">
+          <h2>Neon Observatory</h2>
+          <p>A retro-futurist control room with live telemetry, aurora gradients, and glitch hover states.</p>
+          <div class="pill">CSS Grid</div>
+          <div class="pill">Framer Motion</div>
+          <div class="pill">ARIA-first</div>
+          <div class="line"></div>
+          <div class="meta">
+            <span>ETA: 2 weeks</span>
+            <span>Visual QA locked</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid" id="process">
+      <article class="panel reveal">
+        <p class="eyebrow">01 / Intent</p>
+        <h3>Pick a bold narrative, define the signature move, lock the palette.</h3>
+        <p>We interrogate purpose, audience, and constraints. Each build commits to one unmistakable gesture—stripe, glow, or grain—and sticks to it.</p>
+      </article>
+      <article class="panel reveal">
+        <p class="eyebrow">02 / Build</p>
+        <h3>Real code: semantic HTML, layered CSS, purposeful motion.</h3>
+        <p>CSS variables for theming, responsive grids, progressive enhancement. Animations gated by prefers-reduced-motion.</p>
+      </article>
+      <article class="panel reveal">
+        <p class="eyebrow">03 / Polish</p>
+        <h3>Accessibility, performance, and tactile interactions.</h3>
+        <p>Contrast checks, keyboard navigation, tuned shadows, intentional hover states. We avoid boilerplate aesthetics at all costs.</p>
+      </article>
+    </section>
+
+    <section class="timeline" id="contact">
+      <div class="timeline-head">
+        <p class="eyebrow">Field notes</p>
+        <h3>Recent drops</h3>
+      </div>
+      <div class="timeline-rail">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+      <div class="timeline-items">
+        <div class="timeline-card reveal">
+          <p class="label">2024</p>
+          <h4>Aerial atlas</h4>
+          <p>Editorial map portal with split-screen narrative and scroll-synced chapters.</p>
+        </div>
+        <div class="timeline-card reveal">
+          <p class="label">2023</p>
+          <h4>Glassfoundry</h4>
+          <p>Industrial dashboard with translucent panels, border glows, and live system vitals.</p>
+        </div>
+        <div class="timeline-card reveal">
+          <p class="label">2022</p>
+          <h4>Islands</h4>
+          <p>Pastel travel companion with hand-drawn dividers, slow float animations, and tactile cards.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="marquee" aria-hidden="true">
+      <span>Distinctive frontends · Real code · No generic glaze · </span>
+      <span>Distinctive frontends · Real code · No generic glaze · </span>
+      <span>Distinctive frontends · Real code · No generic glaze · </span>
+    </div>
+    <div class="footer-grid">
+      <div>
+        <p class="eyebrow">Contact</p>
+        <a href="mailto:hello@avant.studio">hello@avant.studio</a>
+      </div>
+      <div>
+        <p class="eyebrow">Social</p>
+        <a href="#">Are.na</a>
+        <a href="#">Behance</a>
+      </div>
+      <div>
+        <p class="eyebrow">Collab</p>
+        <p>We ship components, pages, systems, and microsites.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./script.js"></script>
+</body>
+</html>

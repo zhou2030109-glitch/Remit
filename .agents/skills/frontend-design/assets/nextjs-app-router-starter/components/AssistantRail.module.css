@@ -1,0 +1,217 @@
+.wrap {
+  display: grid;
+  gap: 12px;
+}
+
+.panel {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.07),
+    rgba(255, 255, 255, 0.03)
+  );
+  border: 1px solid color-mix(in oklab, white, transparent 88%);
+  box-shadow: var(--shadow-md);
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: color-mix(in oklab, var(--muted), white 18%);
+}
+
+.disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  font-size: 12px;
+  color: color-mix(in oklab, var(--accent), white 18%);
+  background: rgba(110, 231, 255, 0.12);
+  border: 1px solid rgba(110, 231, 255, 0.28);
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.promptRow {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.input {
+  flex: 1;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.12);
+  color: var(--ink);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.input::placeholder {
+  color: color-mix(in oklab, var(--muted), transparent 10%);
+}
+
+.btn {
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, white, transparent 85%);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  padding: 10px 12px;
+  font: inherit;
+  cursor: pointer;
+  transition: transform var(--dur-2) var(--ease-out), background var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: color-mix(in oklab, var(--accent), white 35%);
+}
+
+.btnPrimary {
+  border-color: color-mix(in oklab, var(--accent), white 40%);
+  background: linear-gradient(
+    180deg,
+    rgba(110, 231, 255, 0.2),
+    rgba(255, 255, 255, 0.06)
+  );
+}
+
+.output {
+  margin-top: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+}
+
+.typing {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--accent), white 15%);
+  opacity: 0.6;
+  animation: pulse 900ms var(--ease-out) infinite;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(-1px);
+    opacity: 0.9;
+  }
+}
+
+.text {
+  margin: 0;
+  color: color-mix(in oklab, var(--ink), white 2%);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.citations {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chipNumber {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(110, 231, 255, 0.14);
+  border: 1px solid rgba(110, 231, 255, 0.26);
+  color: color-mix(in oklab, var(--accent), white 20%);
+  font-weight: 650;
+  font-size: 11px;
+}
+
+.controls {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.controlRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.whyRow {
+  margin-top: 12px;
+}
+
+.status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.statusStrong {
+  color: color-mix(in oklab, var(--success), white 18%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+}
