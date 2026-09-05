@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { getApiConfigStatus, saveApiConfig } from "@/apis/apiKeyApi";
-import { submitModelingTask } from "@/apis/submitModelingApi";
+import {
+	type ExecutionBackend,
+	submitModelingTask,
+} from "@/apis/submitModelingApi";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +61,9 @@ const selectedOptions = ref({
 	template: "国赛",
 	language: "中文",
 });
+
+/** 当前项目使用的代码计算环境；保持原有 MATLAB 默认行为 */
+const executionBackend = ref<ExecutionBackend>("matlab");
 
 const OPTION_GROUPS: {
 	field: keyof typeof selectedOptions.value;
@@ -201,6 +207,7 @@ async function handleSubmit(): Promise<void> {
 			user_requirements: userRequirements.value,
 			comp_template: selectedOptions.value.template,
 			format_output: "LaTeX",
+			execution_backend: executionBackend.value,
 		};
 		const attachments = uploadedFiles.value.concat(problemPdf.value);
 		const { data } = await submitModelingTask(request, attachments);
@@ -307,6 +314,31 @@ async function handleSubmit(): Promise<void> {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div class="rounded-lg border px-3 py-3">
+            <div class="mb-2 flex items-start justify-between gap-3">
+              <div>
+                <h4 class="text-sm font-medium">计算环境</h4>
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                  MATLAB 保持默认；选择 Python 后，本项目会直接使用 Python 并在续跑时保持不变。
+                </p>
+              </div>
+              <span class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                项目级
+              </span>
+            </div>
+            <Select v-model="executionBackend">
+              <SelectTrigger class="h-9">
+                <SelectValue placeholder="选择计算环境" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>计算环境</SelectLabel>
+                  <SelectItem value="matlab">MATLAB（默认）</SelectItem>
+                  <SelectItem value="python">Python</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
           <div class="rounded-lg border bg-muted/40 px-3 py-2">
             <p class="text-sm font-medium">固定交付：PDF + 可编译 LaTeX</p>
