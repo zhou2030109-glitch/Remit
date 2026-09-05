@@ -58,6 +58,19 @@ jobs:
       - name: Test launchers and repository contracts
         run: ${{ matrix.venv-python }} -m pytest tests -q
 
+  # Keep the required check name stable when the platform matrix changes.
+  backend-and-launchers-status:
+    name: backend-and-launchers
+    needs: backend-and-launchers
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require all backend and launcher checks to pass
+        env:
+          BACKEND_RESULT: ${{ needs.backend-and-launchers.result }}
+        run: test "$BACKEND_RESULT" = success
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 20
