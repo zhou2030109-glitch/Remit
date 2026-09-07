@@ -1,6 +1,6 @@
 <div align="center">
   <img src="./assets/remit-icon.png" alt="Remit 标志" width="140" />
-  <h1>Remit</h1>
+  <h1>Remit — 数模 Agent · 数学建模 AI 助手</h1>
   <p><strong>本地优先、可检查、可恢复的数学建模工作台</strong></p>
   <p>让 Agent 像一支数模队伍一样协作，让人始终握着题意、选型和交付的决定权。</p>
   <p>
@@ -28,9 +28,10 @@
 
 ---
 
-Remit 把题面理解、数据检查、文献研究、模型选择、代码执行、结果验证和论文写作组织成
-一条带人工确认节点的多 Agent 工作流。它不只给出一段答案，而是把每一步产生的分析、
-证据、代码、图表和交付物放进同一个项目工作区，方便检查、返修和恢复。
+Remit 是一个本地优先的开源数学建模 AI 助手（数模 Agent），将题意分析、数据检查、
+文献检索、候选模型比较、代码执行、结果验证和论文写作串成可检查、可恢复的多智能体工作流。
+你可以在关键节点审核、退回修改，并在中断后从检查点继续任务。分析、证据、代码、图表和
+论文产物都保存在同一个项目工作区，方便检查与复用。
 
 <p align="center">
   <img src="./assets/remit-workbench-overview.png" alt="Remit 数学建模工作台主页" width="1100" />
@@ -232,10 +233,13 @@ Remit 面向可信的单用户本机环境，不具备公网多租户服务所�
 ## 加入交流群
 
 想交流 Remit 的使用、数学建模工作流或一起参与开发，可以扫码加入微信群
-**Remit（数模 agent）**。欢迎分享建议、问题和实际使用体验。
+**Remit（数模 Agent）**。欢迎分享建议、问题和实际使用体验。
 
 <p align="center">
-  <img src="./assets/remit-wechat-group.png" alt="Remit 数模 Agent 微信交流群二维码" width="360" />
+  <a href="./assets/remit-wechat-group.png">
+    <img src="./assets/remit-wechat-group.png" alt="Remit 数模 Agent 微信交流群二维码，2026 年 9 月 14 日前有效" width="360" />
+  </a>
 </p>
 
-> 微信群二维码有效期较短，当前图片标注为 9 月 4 日前有效；过期后会在仓库更新。
+> 二维码更新于 2026 年 9 月 7 日，当前图片标注为 9 月 14 日前有效。点击图片可查看原图；
+> 如二维码失效，可提交 Issue 提醒更新。

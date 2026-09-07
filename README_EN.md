@@ -1,4 +1,4 @@
-# Remit
+# Remit — Mathematical Modeling AI Agent
 
 <p align="center">
   <img src="./assets/remit-icon.png" alt="Remit mark" width="150" />
@@ -14,10 +14,16 @@
   <a href="./README.md">中文</a>
 </p>
 
-Remit organizes problem interpretation, data inspection, model design, code
-execution, validation, and paper writing into a multi-agent workflow with human
-approval checkpoints. The project is at version `0.1.x`; APIs and workflows may
-still change.
+Remit is an open-source, local-first AI assistant for mathematical modeling
+(数模 Agent). It organizes problem analysis, data inspection, literature search,
+candidate model comparison, code execution, result validation, and paper writing
+into an inspectable, recoverable multi-agent workflow. Review results at key
+checkpoints, return steps for revision, and resume interrupted tasks with the
+analysis, evidence, code, figures, and paper artifacts kept in one workspace.
+
+The project is at version `0.1.x`; APIs and workflows may still change.
+
+[Quick start](#quick-start) · [Features](#features) · [WeChat community](#wechat-community)
 
 ## Features
 
@@ -179,3 +185,18 @@ limitations. Those documents are transparent disclosures, not legal opinions.
     <img alt="Remit Star History" src="https://raw.githubusercontent.com/zhou2030109-glitch/Remit/refs/heads/star-history/assets/star-history/star-history-light.svg?v=2" width="800" />
   </picture>
 </p>
+
+## WeChat community
+
+Scan the QR code to join the **Remit (数模 Agent)** WeChat group for usage
+questions, mathematical modeling workflows, feedback, and development discussion.
+
+<p align="center">
+  <a href="./assets/remit-wechat-group.png">
+    <img src="./assets/remit-wechat-group.png" alt="Remit WeChat group QR code, valid before September 14, 2026" width="360" />
+  </a>
+</p>
+
+> Updated September 7, 2026. The image states that the QR code is valid before
+> September 14. Click the image for full resolution; if it expires, open an issue
+> to request an update.

@@ -473,7 +473,10 @@ docker compose up --build
 想法，都欢迎进群讨论。
 
 <p align="center">
-  <img src="../assets/remit-wechat-group.png" alt="Remit 数模 Agent 微信交流群二维码" width="360" />
+  <a href="../assets/remit-wechat-group.png">
+    <img src="../assets/remit-wechat-group.png" alt="Remit 数模 Agent 微信交流群二维码，2026 年 9 月 14 日前有效" width="360" />
+  </a>
 </p>
 
-> 微信群二维码有效期较短，当前图片标注为 9 月 4 日前有效；过期后会在仓库更新。
+> 二维码更新于 2026 年 9 月 7 日，当前图片标注为 9 月 14 日前有效。点击图片可查看原图；
+> 如二维码失效，可提交 Issue 提醒更新。
