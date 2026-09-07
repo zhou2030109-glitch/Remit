@@ -192,8 +192,8 @@ Scan the QR code to join the **Remit (数模 Agent)** WeChat group for usage
 questions, mathematical modeling workflows, feedback, and development discussion.
 
 <p align="center">
-  <a href="./assets/remit-wechat-group.png">
-    <img src="./assets/remit-wechat-group.png" alt="Remit WeChat group QR code, valid before September 14, 2026" width="360" />
+  <a href="./assets/remit-wechat-group.png?v=20260907">
+    <img src="./assets/remit-wechat-group.png?v=20260907" alt="Remit WeChat group QR code, valid before September 14, 2026" width="360" />
   </a>
 </p>
 
