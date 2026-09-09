@@ -85,6 +85,41 @@ jobs:
           BACKEND_RESULT: ${{ needs.backend-and-launchers.result }}
         run: test "$BACKEND_RESULT" = success
 
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version-file: backend/.python-version
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.12.10"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --frozen --no-dev
+      - name: Audit Python dependencies
+        working-directory: backend
+        run: uvx --python 3.12 pip-audit --progress-spinner off --path .venv
+      - name: Scan backend for high-confidence security issues
+        working-directory: backend
+        run: uvx --python 3.12 bandit -r app -ll
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+        with:
+          version: 10.6.3
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: frontend/.node-version
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Audit frontend production dependencies
+        working-directory: frontend
+        run: pnpm audit --prod --audit-level=high
+
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -135,3 +170,22 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: pnpm run build
+
+  ci-status:
+    name: CI status
+    needs: [backend-and-launchers-status, docker, frontend, security]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require all CI jobs to pass
+        env:
+          BACKEND_RESULT: ${{ needs.backend-and-launchers-status.result }}
+          DOCKER_RESULT: ${{ needs.docker.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+        run: |
+          test "$BACKEND_RESULT" = success
+          test "$DOCKER_RESULT" = success
+          test "$FRONTEND_RESULT" = success
+          test "$SECURITY_RESULT" = success

@@ -49,9 +49,11 @@ The CI workflow runs:
 - backend lint, formatting, dependency consistency, and tests on Windows,
   macOS, and Linux;
 - repository launcher and configuration contract tests;
+- Python and frontend production dependency audits plus a high-confidence
+  Bandit scan;
 - frontend formatting, lint, tests, and production build on Linux;
-- a required aggregate status check so branch protection stays stable when the
-  platform matrix changes.
+- a single `CI status` check so branch protection does not need to track every
+  matrix entry or individual job.
 
 The production Docker image is built on every pull request and main push. The
 release workflow publishes the image only for version tags or an explicitly

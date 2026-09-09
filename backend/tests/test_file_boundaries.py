@@ -1,6 +1,7 @@
 """文件 API 与批量上传的目录、名称、资源限制回归。"""
 
 import asyncio
+import re
 from io import BytesIO
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from fastapi import FastAPI, UploadFile
 from app.config.setting import settings
 from app.routers.files_router import router
 from app.services.task_intake import UploadLimitError, persist_uploads
-from app.utils.common_utils import create_work_dir, get_work_dir
+from app.utils.common_utils import create_task_id, create_work_dir, get_work_dir
 
 
 def upload(name: str, body: bytes = b"data") -> UploadFile:
@@ -27,6 +28,14 @@ def test_directory_helpers_reject_path_identifiers(tmp_path, monkeypatch, task_i
         create_work_dir(task_id)
     with pytest.raises(ValueError):
         get_work_dir(task_id)
+
+
+def test_create_task_id_is_safe_and_uses_a_random_suffix():
+    first = create_task_id()
+    second = create_task_id()
+
+    assert re.fullmatch(r"\d{8}-\d{6}-[0-9a-f]{8}", first)
+    assert first != second
 
 
 def test_file_api_cannot_list_or_open_an_external_directory(tmp_path, monkeypatch):
