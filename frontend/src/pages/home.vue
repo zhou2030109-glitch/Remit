@@ -365,8 +365,8 @@ onMounted(async () => {
 				<span>Remit</span>
 			</RouterLink>
 
-			<nav class="sidebar-nav">
-				<RouterLink to="/home" class="sidebar-item sidebar-active">
+			<nav class="sidebar-nav" aria-label="主要导航">
+				<RouterLink to="/home" class="sidebar-item sidebar-active" aria-current="page">
 					<Home aria-hidden="true" />
 					<span>工作台</span>
 				</RouterLink>
