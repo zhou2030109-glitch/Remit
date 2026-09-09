@@ -36,7 +36,25 @@ function Assert-LauncherDependencies {
     if (-not (Test-Path -LiteralPath $viteEntryPoint -PathType Leaf)) {
         throw "Frontend Vite entry point not found. The project may have moved. Run: cd frontend; pnpm install --force --frozen-lockfile"
     }
-    $script:PnpmCommand = (Get-Command "pnpm.cmd" -ErrorAction Stop).Source
+
+    $nodeCommand = Get-Command "node.exe" -ErrorAction SilentlyContinue
+    if ($null -eq $nodeCommand) {
+        throw "Node.js 24 is required but node.exe was not found. Install Node.js 24 and reopen the launcher."
+    }
+    $nodeVersion = (& $nodeCommand.Source --version).Trim()
+    if ($nodeVersion -notmatch '^v24\.') {
+        throw "Node.js 24 is required (found $nodeVersion). Install Node.js 24 and reopen the launcher."
+    }
+
+    $pnpmCommand = Get-Command "pnpm.cmd" -ErrorAction SilentlyContinue
+    if ($null -eq $pnpmCommand) {
+        throw "pnpm 10 is required but pnpm.cmd was not found. Run: corepack enable (or npm install -g pnpm@10.6.3)"
+    }
+    $pnpmVersion = (& $pnpmCommand.Source --version).Trim()
+    if ($pnpmVersion -notmatch '^10\.') {
+        throw "pnpm 10 is required (found $pnpmVersion). Run: corepack prepare pnpm@10.6.3 --activate"
+    }
+    $script:PnpmCommand = $pnpmCommand.Source
 }
 
 function Test-ListeningPort([int]$Port) {
@@ -78,6 +96,16 @@ function Save-ServicePid([string]$Name, [System.Diagnostics.Process]$Process) {
     }
     $identity | ConvertTo-Json | Set-Content -LiteralPath "$pidPath.json" -Encoding UTF8
     Set-Content -LiteralPath $pidPath -Value $Process.Id -Encoding ascii -NoNewline
+}
+
+function Initialize-BackendEnvironment {
+    $envPath = Join-Path $BackendDirectory ".env.dev"
+    $examplePath = Join-Path $BackendDirectory ".env.example"
+    if (-not (Test-Path -LiteralPath $envPath -PathType Leaf) -and
+        (Test-Path -LiteralPath $examplePath -PathType Leaf)) {
+        Copy-Item -LiteralPath $examplePath -Destination $envPath
+        Write-Host "[INIT] Generated backend\.env.dev from .env.example. Add provider API keys when needed."
+    }
 }
 
 function Start-ProjectService {
@@ -123,6 +151,7 @@ if ($Check) {
     exit 0
 }
 
+Initialize-BackendEnvironment
 New-Item -ItemType Directory -Path $LogDirectory -Force | Out-Null
 $ListeningPorts = @(
     [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners() |

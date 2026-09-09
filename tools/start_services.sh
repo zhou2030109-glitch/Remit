@@ -68,6 +68,7 @@ if [ ! -x "$BACKEND_PYTHON" ]; then
 fi
 
 REDIS_BIN="$(find_redis_executable || true)"
+NODE_BIN="$(command -v node 2>/dev/null || true)"
 PNPM_BIN="$(command -v pnpm 2>/dev/null || true)"
 
 assert_dependencies() {
@@ -89,9 +90,22 @@ assert_dependencies() {
 	if [ ! -f "$FRONTEND_DIR/node_modules/vite/bin/vite.js" ]; then
 		die "Frontend Vite entry point not found. The project may have moved. Run: cd frontend; pnpm install --force --frozen-lockfile"
 	fi
-	if [ -z "$PNPM_BIN" ]; then
-		die "未找到 pnpm。请先安装: corepack enable 或 npm install -g pnpm@10"
+	if [ -z "$NODE_BIN" ]; then
+		die "未找到 Node.js。请安装 Node.js 24（见 frontend/.node-version）后重试。"
 	fi
+	node_version="$($NODE_BIN --version 2>/dev/null || true)"
+	case "$node_version" in
+	v24.*) ;;
+	*) die "需要 Node.js 24（当前: ${node_version:-未知}）。请按 frontend/.node-version 安装。" ;;
+	esac
+	if [ -z "$PNPM_BIN" ]; then
+		die "未找到 pnpm。请先安装: corepack enable 或 npm install -g pnpm@10.6.3"
+	fi
+	pnpm_version="$($PNPM_BIN --version 2>/dev/null || true)"
+	case "$pnpm_version" in
+	10.*) ;;
+	*) die "需要 pnpm 10（当前: ${pnpm_version:-未知}）。请执行: corepack prepare pnpm@10.6.3 --activate" ;;
+	esac
 }
 
 port_pids() {

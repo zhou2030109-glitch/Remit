@@ -61,8 +61,6 @@ inputs.
 git clone https://github.com/zhou2030109-glitch/Remit.git
 cd Remit
 
-Copy-Item backend/.env.example backend/.env.dev
-
 cd backend
 uv sync --frozen
 
@@ -75,14 +73,13 @@ cd ..
 
 Open <http://127.0.0.1:15173>. Backend API documentation is available at
 <http://127.0.0.1:18000/docs>. Run `win_stop.bat` to stop all services.
+The first launch creates `backend/.env.dev` automatically; provider keys can be entered in the UI or added to that file later.
 
 ### macOS / Linux from source
 
 ```bash
 git clone https://github.com/zhou2030109-glitch/Remit.git
 cd Remit
-
-cp backend/.env.example backend/.env.dev
 
 cd backend
 uv sync --frozen
@@ -105,12 +102,12 @@ validates the launch dependencies at any time.
 ### Docker Compose
 
 ```bash
-cp backend/.env.example backend/.env.dev
 docker compose up --build
 ```
 
 The default ports are `15173` for the frontend, `18000` for the backend, and
-`16379` for Redis.
+`16379` for Redis. `backend/.env.dev` is optional for a first launch; provider
+keys can be entered in the UI or added to that file later.
 
 ## Model configuration
 
