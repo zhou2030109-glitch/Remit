@@ -23,7 +23,8 @@ services:
     ports:
       - "18000:8000"
     env_file:
-      - ./backend/.env.dev
+      - path: ./backend/.env.dev
+        required: false
     environment:
       ENV: DEV
       REDIS_URL: redis://redis:6379/0

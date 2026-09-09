@@ -25,6 +25,19 @@ class StartServicesDependencyTests(unittest.TestCase):
         self.assertIn("Test-ProjectOwnedListener", text)
         self.assertIn("occupied by another application", text)
 
+    def test_launcher_generates_missing_dev_env_after_dependency_check(self) -> None:
+        text = START_SERVICES.read_text(encoding="utf-8")
+        call = "\nInitialize-BackendEnvironment\nNew-Item"
+        self.assertIn("function Initialize-BackendEnvironment", text)
+        self.assertIn("Copy-Item -LiteralPath $examplePath -Destination $envPath", text)
+        self.assertIn(call, text)
+        self.assertLess(text.index("if ($Check)"), text.index(call))
+
+    def test_launcher_requires_node_24_and_pnpm_10(self) -> None:
+        text = START_SERVICES.read_text(encoding="utf-8")
+        self.assertIn("Node.js 24 is required", text)
+        self.assertIn("pnpm 10 is required", text)
+
     def test_check_rejects_broken_vite_installation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_directory:
             root = Path(temp_directory)

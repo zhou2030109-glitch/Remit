@@ -56,6 +56,11 @@ class PosixStartLauncherTests(unittest.TestCase):
         self.assertIn("FRONTEND_PORT=15173", text)
         self.assertIn("--strictPort", text)
 
+    def test_launcher_requires_node_24_and_pnpm_10(self) -> None:
+        text = START_SERVICES.read_text(encoding="utf-8")
+        self.assertIn("Node.js 24", text)
+        self.assertIn("pnpm 10", text)
+
     def test_launcher_rejects_foreign_port_owners(self) -> None:
         text = START_SERVICES.read_text(encoding="utf-8")
         self.assertIn("occupied by another application", text)

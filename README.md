@@ -95,8 +95,6 @@ Remit 是一个本地优先的开源数学建模 AI 助手（数模 Agent），�
 git clone https://github.com/zhou2030109-glitch/Remit.git
 cd Remit
 
-Copy-Item backend/.env.example backend/.env.dev
-
 cd backend
 uv sync --frozen
 
@@ -109,14 +107,13 @@ cd ..
 
 访问 <http://127.0.0.1:15173>。后端 API 文档位于
 <http://127.0.0.1:18000/docs>。运行 `win_stop.bat` 停止服务。
+首次启动会自动生成 `backend/.env.dev`；模型密钥可在界面中填写，也可稍后编辑该文件。
 
 ### macOS / Linux 源码模式
 
 ```bash
 git clone https://github.com/zhou2030109-glitch/Remit.git
 cd Remit
-
-cp backend/.env.example backend/.env.dev
 
 cd backend
 uv sync --frozen
@@ -138,11 +135,10 @@ macOS 也可双击 `mac_start.command` / `mac_stop.command`。首次运行前请
 ### Docker Compose
 
 ```bash
-cp backend/.env.example backend/.env.dev
 docker compose up --build
 ```
 
-前端默认端口为 `15173`，后端为 `18000`，Redis 为 `16379`。
+前端默认端口为 `15173`，后端为 `18000`，Redis 为 `16379`。首次启动无需预先创建 `backend/.env.dev`；模型密钥可在界面中填写，也可按需创建该文件。
 
 需要可直接运行的生产镜像或离线安装包时，见[发布包构建与使用](docs/distribution.md)。
 
