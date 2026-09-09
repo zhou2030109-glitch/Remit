@@ -358,7 +358,8 @@ class RemitWorkFlow(WorkFlow):
         ) and "pilot" not in state.get("completed_nodes", [])
         if pending_solution_keys or pilot_pending:
             await self._initialize_interpreter(state)
-            assert self.code_interpreter is not None
+            if self.code_interpreter is None:
+                raise RuntimeError("code interpreter is not initialized")
             coder_agent = self._new_coder_agent(coder_llm, problem)
             # EDA 先行：探索实验依赖清洗后的数据
             if "eda" in solution_flows and "solve:eda" not in state.get(
@@ -447,7 +448,8 @@ class RemitWorkFlow(WorkFlow):
 
     async def _publish_progress(self, state: dict[str, Any]) -> None:
         """推送实时进度快照；失败只记日志，不阻断工作流。"""
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         try:
             message = build_progress_message(self.task_id, self.checkpoint, state)
             await redis_manager.publish_message(self.task_id, message)
@@ -455,18 +457,21 @@ class RemitWorkFlow(WorkFlow):
             logger.warning(f"进度推送失败: {exc}")
 
     async def _start_node(self, state: dict[str, Any], node_id: str) -> None:
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         self.checkpoint.start_node(state, node_id)
         await self._publish_progress(state)
 
     async def _complete_node(self, state: dict[str, Any], node_id: str) -> None:
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         self.checkpoint.complete_node(state, node_id)
         await self._publish_progress(state)
 
     def _next_step_plain(self, state: dict[str, Any], node_id: str) -> str:
         """给审批卡计算"批准后会发生什么"的大白话描述。"""
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         order = self.checkpoint.node_order(state)
         try:
             index = order.index(node_id)
@@ -489,7 +494,8 @@ class RemitWorkFlow(WorkFlow):
         explain: dict[str, Any] | None = None,
     ) -> None:
         """按 HIL 配置建立人工闸门；自动模式绝不放行不完整产物。"""
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         checkpoint_key = self._hil_checkpoint_key(node_id)
         if not self._hil_enabled_for(node_id):
             if allow_incomplete:
@@ -532,7 +538,8 @@ class RemitWorkFlow(WorkFlow):
         self, state: dict[str, Any]
     ) -> dict[str, Any]:
         """让关闭 HIL 后恢复的旧任务不再困在历史审核状态。"""
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         pending = self.checkpoint.pending_approval(state)
         if not pending:
             return state
@@ -569,7 +576,8 @@ class RemitWorkFlow(WorkFlow):
             self.ques_count = response.ques_count
             return response
 
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         await self._start_node(state, "coordinator")
         opening_notice = SystemMessage(content="正在梳理题意并建立问题结构…")
         await redis_manager.publish_message(self.task_id, opening_notice)
@@ -625,7 +633,8 @@ class RemitWorkFlow(WorkFlow):
         if "modeler" in state.get("completed_nodes", []) and saved:
             return ModelerToCoder.model_validate(saved)
 
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         await self._start_node(state, "modeler")
         await redis_manager.publish_message(
             self.task_id,
@@ -864,13 +873,15 @@ class RemitWorkFlow(WorkFlow):
             refined = CoordinatorToModeler.model_validate(saved)
             if "analysis" in state.get("approved_nodes", []):
                 return refined
-            assert self.checkpoint is not None
+            if self.checkpoint is None:
+                raise RuntimeError("workflow checkpoint is not initialized")
             pending = self.checkpoint.pending_approval(state)
             if pending and pending.get("node_id") == "analysis":
                 raise WorkflowApprovalRequired(pending)
             await self._submit_analysis_approval(state, refined)
 
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         await self._start_node(state, "analysis")
         await self._check_cancelled()
         cumulative_feedback = self.checkpoint.cumulative_revision_feedback(
@@ -974,7 +985,8 @@ class RemitWorkFlow(WorkFlow):
         scholar: OpenAlexScholar,
     ) -> CoordinatorToModeler:
         """数据侦察 + 文献调研；信息性节点，失败降级，不设审批暂停。"""
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         if "research" not in self.checkpoint.node_order(state):
             # 旧任务没有该节点，保持原行为
             return coordinator_response
@@ -1077,8 +1089,10 @@ class RemitWorkFlow(WorkFlow):
         成功后把定案方案写回 state["modeler_response"]；开启审核时暂停，
         自动模式由 execute 立即加载新方案。降级跳过时沿用原方案。
         """
-        assert self.checkpoint is not None
-        assert self.code_interpreter is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
+        if self.code_interpreter is None:
+            raise RuntimeError("code interpreter is not initialized")
         node_id = "pilot"
         await self._start_node(state, node_id)
         await self._check_cancelled()
@@ -1143,7 +1157,8 @@ class RemitWorkFlow(WorkFlow):
                         + build_pilot_coder_prompt(plan)
                         + feedback_suffix
                     )
-            assert results is not None
+            if results is None:
+                raise RuntimeError("workflow results are not initialized")
 
             await publish_activity(
                 self.task_id, "建模手正在基于小实验数据定案…", category="llm"
@@ -1284,7 +1299,8 @@ class RemitWorkFlow(WorkFlow):
             timeout=int(settings.MATLAB_EXECUTION_TIMEOUT_SECONDS),
             preferred_backend=preferred_backend,
         )
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         state["execution_backend"] = {
             "language": self.code_interpreter.language,
             "name": self.code_interpreter.backend_name,
@@ -1311,8 +1327,10 @@ class RemitWorkFlow(WorkFlow):
         user_output: UserOutput,
     ) -> None:
         """执行一个求解节点，并在代码与写作门禁都通过后提交检查点。"""
-        assert self.checkpoint is not None
-        assert self.code_interpreter is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
+        if self.code_interpreter is None:
+            raise RuntimeError("code interpreter is not initialized")
         node_id = f"solve:{key}"
         await self._start_node(state, node_id)
         await self._check_cancelled()
@@ -1441,7 +1459,8 @@ class RemitWorkFlow(WorkFlow):
                         ),
                     )
         for gate_attempt in range(1, 4):
-            assert contract is not None, f"{key} 缺少强制质量契约"
+            if contract is None:
+                raise RuntimeError(f"{key} 缺少强制质量契约")
             if gate_attempt == 1 and recovered_gate_report is not None:
                 coder_response = CoderToWriter(
                     code_response=(
@@ -1686,7 +1705,10 @@ class RemitWorkFlow(WorkFlow):
 
             if execution_review.verdict == "refine":
                 revision_plan = execution_review.revision_plan
-                assert revision_plan is not None
+                if revision_plan is None:
+                    raise RuntimeError(
+                        "execution review did not provide a revision plan"
+                    )
                 revision_history.append(
                     {
                         "attempt": gate_attempt,
@@ -1726,9 +1748,12 @@ class RemitWorkFlow(WorkFlow):
             self.checkpoint.save(state)
             break
 
-        assert coder_response is not None
-        assert gate_report is not None
-        assert execution_review is not None
+        if coder_response is None:
+            raise RuntimeError("coder response is not available")
+        if gate_report is None:
+            raise RuntimeError("quality gate report is not available")
+        if execution_review is None:
+            raise RuntimeError("execution review is not available")
         await redis_manager.publish_message(
             self.task_id,
             SystemMessage(
@@ -1840,7 +1865,8 @@ class RemitWorkFlow(WorkFlow):
                     + writer_prompt
                 )
 
-        assert writer_response is not None
+        if writer_response is None:
+            raise RuntimeError("writer response is not available")
         user_output.set_res(key, writer_response)
         state.setdefault("solution_results", {})[key] = {
             "coder_response": coder_response.model_dump(mode="json"),
@@ -1958,7 +1984,8 @@ class RemitWorkFlow(WorkFlow):
 
     def _new_coder_agent(self, coder_llm: LLM, problem: Problem) -> CoderAgent:
         """Bind the active interpreter to one solver session."""
-        assert self.code_interpreter is not None
+        if self.code_interpreter is None:
+            raise RuntimeError("code interpreter is not initialized")
         return CoderAgent(
             problem.task_id,
             coder_llm,
@@ -1985,7 +2012,8 @@ class RemitWorkFlow(WorkFlow):
         各章节输入互不引用（flows 六章 prompt 相互独立），并行不损失一致性；
         合并审批仍保留退回单章的能力（revision_targets 含全部章节）。
         """
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         await self._start_node(state, f"write:{pending_write[0][0]}")
         await self._check_cancelled()
         await redis_manager.publish_message(
@@ -2143,7 +2171,8 @@ class RemitWorkFlow(WorkFlow):
         judge_llm: LLM,
     ) -> dict[str, Any] | None:
         """终稿评委评审 + 最弱章节定向重写；失败降级，绝不阻塞交付。"""
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         existing = state.get("paper_review")
         if isinstance(existing, dict) and existing:
             # 哨兵值表示上次评审已降级跳过：一次 finalize 生命周期内不重试
@@ -2309,7 +2338,8 @@ class RemitWorkFlow(WorkFlow):
         judge_llm: LLM,
     ) -> None:
         """合并全文并执行最终硬门禁。"""
-        assert self.checkpoint is not None
+        if self.checkpoint is None:
+            raise RuntimeError("workflow checkpoint is not initialized")
         await self._start_node(state, "finalize")
         await self._check_cancelled()
         revision_feedback = self.checkpoint.consume_revision_feedback(state, "finalize")

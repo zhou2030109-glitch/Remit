@@ -176,7 +176,8 @@ class CoderAgent(Agent):
     # ---- 步骤拆分 ----
 
     def _require_interpreter(self) -> BaseCodeInterpreter:
-        assert self.code_interpreter is not None, "code_interpreter 未初始化"
+        if self.code_interpreter is None:
+            raise RuntimeError("code_interpreter is not initialized")
         return self.code_interpreter
 
     async def _prime_history(self, prompt: str) -> None:

@@ -108,7 +108,8 @@ class E2BCodeInterpreter(BaseCodeInterpreter):
 
     async def _upload_all_files(self) -> None:
         """把任务目录里可上传的文件推到沙箱 home。"""
-        assert self.sbx is not None
+        if self.sbx is None:
+            raise RuntimeError("E2B sandbox is not initialized")
         if not os.path.isdir(self.work_dir):
             raise FileNotFoundError(f"工作目录不存在: {self.work_dir}")
         for name in os.listdir(self.work_dir):
@@ -256,7 +257,8 @@ class E2BCodeInterpreter(BaseCodeInterpreter):
 
     async def download_all_files_from_sandbox(self) -> None:
         """把沙箱 home 下的文件全量同步回本地任务目录。"""
-        assert self.sbx is not None
+        if self.sbx is None:
+            raise RuntimeError("E2B sandbox is not initialized")
         os.makedirs(self.work_dir, exist_ok=True)
         try:
             entries = await self.sbx.files.list(_SANDBOX_HOME)
