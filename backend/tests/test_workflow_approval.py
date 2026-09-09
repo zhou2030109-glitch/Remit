@@ -176,7 +176,9 @@ class WorkflowApprovalTests(unittest.IsolatedAsyncioTestCase):
                 pending["checkpoint_id"],
             )
 
-    async def test_approval_unlocks_next_node_but_stale_request_is_rejected(self) -> None:
+    async def test_approval_unlocks_next_node_but_stale_request_is_rejected(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             checkpoint = WorkflowCheckpoint(tmp)
             state = checkpoint.initialize(self._problem())
@@ -190,13 +192,13 @@ class WorkflowApprovalTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(approved["status"], "running")
             self.assertIsNone(approved["pending_approval"])
             self.assertIn("coordinator", approved["completed_nodes"])
-            self.assertEqual(
-                approved["approval_history"][-1]["decision"], "approve"
-            )
+            self.assertEqual(approved["approval_history"][-1]["decision"], "approve")
             with self.assertRaises(WorkflowCheckpointError):
                 checkpoint.approve(approved, pending["checkpoint_id"])
 
-    async def test_revision_invalidates_reviewed_node_and_persists_feedback(self) -> None:
+    async def test_revision_invalidates_reviewed_node_and_persists_feedback(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             checkpoint = WorkflowCheckpoint(tmp)
             state = checkpoint.initialize(self._problem())
@@ -254,7 +256,9 @@ class WorkflowApprovalTests(unittest.IsolatedAsyncioTestCase):
                 "小问拆分遗漏了约束条件，请从拆题开始重做。",
             )
 
-    async def test_get_pending_approval_uses_checkpoint_not_message_history(self) -> None:
+    async def test_get_pending_approval_uses_checkpoint_not_message_history(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             checkpoint = WorkflowCheckpoint(tmp)
             state = checkpoint.initialize(self._problem())

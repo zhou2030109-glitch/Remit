@@ -181,9 +181,7 @@ class RedisConnectionResilienceTests(unittest.IsolatedAsyncioTestCase):
                     SystemMessage(content="result persisted"),
                 )
 
-            messages = await manager.load_task_messages(
-                "20260716-052635-87215f64"
-            )
+            messages = await manager.load_task_messages("20260716-052635-87215f64")
             self.assertEqual(messages[-1]["content"], "result persisted")
 
     async def test_successful_model_response_is_not_retried_when_publish_fails(

@@ -181,9 +181,11 @@ class E2BCodeInterpreter(BaseCodeInterpreter):
     @staticmethod
     def _render_result(result: Any) -> list[OutputItem]:
         """把沙箱返回的多模态结果拆成前端可展示的条目。"""
-        items: list[OutputItem] = [
-            ResultModel(res_type="result", format="text", msg=str(result))
-        ] if str(result) else []
+        items: list[OutputItem] = (
+            [ResultModel(res_type="result", format="text", msg=str(result))]
+            if str(result)
+            else []
+        )
         rich_representations = {
             "html": "_repr_html_",
             "markdown": "_repr_markdown_",
@@ -200,16 +202,18 @@ class E2BCodeInterpreter(BaseCodeInterpreter):
                 items.append(ResultModel(res_type="result", format=fmt, msg=payload))  # type: ignore[arg-type]
         json_payload = result._repr_json_()
         if json_payload:
-            items.append(ResultModel(res_type="result", format="json", msg=json.dumps(json_payload)))
+            items.append(
+                ResultModel(
+                    res_type="result", format="json", msg=json.dumps(json_payload)
+                )
+            )
         return items
 
     @staticmethod
     def _error_text(error: ErrorModel) -> str:
         return f"Error: {error.name}: {error.value}\n{error.traceback}"
 
-    def _summarize_for_model(
-        self, display: list[OutputItem], error_detail: str
-    ) -> str:
+    def _summarize_for_model(self, display: list[OutputItem], error_detail: str) -> str:
         """把展示条目压缩成回传给模型的文本视图。"""
         parts: list[str] = []
         if error_detail:

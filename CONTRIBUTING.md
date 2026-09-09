@@ -20,8 +20,8 @@ and agree that it may be distributed under this repository's MIT License.
 
 Requirements:
 
-- Python 3.12 or newer and [uv](https://docs.astral.sh/uv/);
-- Node.js 20 or newer and pnpm 10;
+- Python 3.12 (see `backend/.python-version`) and [uv](https://docs.astral.sh/uv/);
+- Node.js 24 (see `frontend/.node-version`) and pnpm 10.6.3;
 - Redis for the complete runtime workflow.
 
 ```powershell
@@ -42,15 +42,21 @@ Run the relevant checks before opening a pull request:
 ```powershell
 cd backend
 uv run ruff check app tests
+uv run ruff format --check app tests
 uv run pytest tests -q
 
 cd ..\frontend
-pnpm run lint
+pnpm run check
+pnpm run typecheck
+pnpm run test
 pnpm run build
 
 cd ..
 backend\.venv\Scripts\python.exe -m pytest tests -q
 ```
+
+See [development and release](docs/development.md) for the complete local and CI
+verification workflow.
 
 Windows launcher tests require Windows. The repository CI runs backend and
 launcher tests on Windows and the frontend build on Linux.

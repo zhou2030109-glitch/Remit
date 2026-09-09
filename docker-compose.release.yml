@@ -38,6 +38,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,urllib.request; s=json.load(urllib.request.urlopen('http://127.0.0.1:8000/status',timeout=3)); raise SystemExit(0 if s['redis']['status']=='running' else 1)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 4
     restart: unless-stopped
 
 volumes:

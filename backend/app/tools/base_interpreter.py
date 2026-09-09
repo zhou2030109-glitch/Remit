@@ -64,7 +64,9 @@ class BaseCodeInterpreter(abc.ABC):
 
     # ---- 公共能力 ----
 
-    async def _push_to_websocket(self, content_to_display: list[OutputItem] | None) -> None:
+    async def _push_to_websocket(
+        self, content_to_display: list[OutputItem] | None
+    ) -> None:
         """把执行结果经 Redis 广播到前端。"""
         logger.info("执行结果已推送到WebSocket")
         message = InterpreterMessage(output=content_to_display)

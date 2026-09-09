@@ -82,7 +82,11 @@ class UserOutput:
         for ref_num, ref_body in _INLINE_REF.findall(text):
             content = ref_body.strip().rstrip(".")
             placeholder = next(
-                (uid for uid, meta in self.footnotes.items() if meta["content"] == content),
+                (
+                    uid
+                    for uid, meta in self.footnotes.items()
+                    if meta["content"] == content
+                ),
                 None,
             )
             if placeholder is None:

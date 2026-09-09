@@ -1,8 +1,8 @@
 """后端共享的小工具：任务目录、模板加载、链接改写等。"""
 
-import hashlib
 import os
 import re
+import secrets
 import shutil
 import tomllib
 from datetime import datetime
@@ -22,9 +22,9 @@ _FOOTNOTE_DEF_RE = re.compile(r"\[\^(\d+)\]:\s*(.+?)(?=\n\[\^|\n\n|\Z)", re.DOTA
 
 
 def create_task_id() -> str:
-    """生成 ``时间戳-短哈希`` 形式的任务 ID。"""
+    """生成 ``时间戳-短随机后缀`` 形式的任务 ID。"""
     now = datetime.now()
-    digest = hashlib.md5(str(now).encode()).hexdigest()[:8]
+    digest = secrets.token_hex(4)
     return f"{now:%Y%m%d-%H%M%S}-{digest}"
 
 

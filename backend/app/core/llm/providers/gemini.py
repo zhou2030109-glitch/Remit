@@ -31,9 +31,7 @@ class GeminiProvider(BaseProvider):
         payload: dict[str, Any] = {"contents": contents}
 
         if system_instruction:
-            payload["systemInstruction"] = {
-                "parts": [{"text": system_instruction}]
-            }
+            payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
         generation_config: dict[str, Any] = {
             "maxOutputTokens": request.max_tokens or 8192,
@@ -71,7 +69,7 @@ class GeminiProvider(BaseProvider):
             reason = feedback.get("blockReason") or "empty candidates"
             raise RuntimeError(f"Gemini 未返回候选内容: {reason}")
 
-        parts = ((candidates[0].get("content") or {}).get("parts") or [])
+        parts = (candidates[0].get("content") or {}).get("parts") or []
         text_parts: list[str] = []
         tool_calls: list[ToolCall] = []
         for part in parts:
@@ -213,7 +211,8 @@ class GeminiProvider(BaseProvider):
                 {
                     "name": function.get("name", "tool"),
                     "description": function.get("description", ""),
-                    "parameters": function.get("parameters") or {
+                    "parameters": function.get("parameters")
+                    or {
                         "type": "object",
                         "properties": {},
                     },

@@ -90,8 +90,16 @@ class StdErrModel(CodeExecution):
 
 
 ExecutionFormat = Literal[
-    "text", "html", "markdown", "png", "jpeg", "svg",
-    "pdf", "latex", "json", "javascript",
+    "text",
+    "html",
+    "markdown",
+    "png",
+    "jpeg",
+    "svg",
+    "pdf",
+    "latex",
+    "json",
+    "javascript",
 ]
 
 

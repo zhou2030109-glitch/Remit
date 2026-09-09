@@ -60,7 +60,9 @@ class AnthropicProvider(BaseProvider):
                 texts.append(block.text)
             elif block.type == "tool_use":
                 calls.append(
-                    ToolCall(id=block.id, name=block.name, arguments=json.dumps(block.input))
+                    ToolCall(
+                        id=block.id, name=block.name, arguments=json.dumps(block.input)
+                    )
                 )
         return StandardResponse(
             content="".join(texts) or None,
@@ -105,7 +107,9 @@ class AnthropicProvider(BaseProvider):
                 )
                 continue
 
-            converted.append({**msg, "content": self._convert_content(msg.get("content"))})
+            converted.append(
+                {**msg, "content": self._convert_content(msg.get("content"))}
+            )
 
         return system_prompt, converted
 

@@ -68,9 +68,7 @@ class LLMFactory:
             if not getattr(settings, f"{role}_{field}")
         ]
         if missing:
-            raise ValueError(
-                "已启用模型评审组，但配置不完整：" + "、".join(missing)
-            )
+            raise ValueError("已启用模型评审组，但配置不完整：" + "、".join(missing))
         return (
             _agent_llm(settings, "MODEL_SCOUT", self.task_id),
             _agent_llm(settings, "MODEL_CRITIC", self.task_id),

@@ -64,7 +64,13 @@ def _profile_bookshelf_blocks(path: Path) -> dict[str, Any]:
         if len(parts) >= 2 and parts[1].lower().startswith("terminal"):
             terminals += 1
             records.append(
-                {"name": parts[0], "kind": "terminal", "width": None, "height": None, "area": None}
+                {
+                    "name": parts[0],
+                    "kind": "terminal",
+                    "width": None,
+                    "height": None,
+                    "area": None,
+                }
             )
             continue
 
@@ -157,7 +163,9 @@ def _profile_bookshelf_nets(path: Path) -> dict[str, Any]:
             index += 1
             continue
 
-        degree_match = re.fullmatch(r"NetDegree\s*:\s*(\d+)(?:\s+\S+)?", line, re.IGNORECASE)
+        degree_match = re.fullmatch(
+            r"NetDegree\s*:\s*(\d+)(?:\s+\S+)?", line, re.IGNORECASE
+        )
         if not degree_match:
             index += 1
             continue
@@ -528,9 +536,7 @@ def summarize_data_profile(profile: dict[str, Any]) -> str:
                 f"Y=[{bounds.get('min_y')}, {bounds.get('max_y')}]"
             ]
         else:
-            parts = [
-                f"{item['file']}: {item['rows']} 行 × {item['columns_count']} 列"
-            ]
+            parts = [f"{item['file']}: {item['rows']} 行 × {item['columns_count']} 列"]
         if item.get("time_range"):
             time_range = item["time_range"]
             parts.append(

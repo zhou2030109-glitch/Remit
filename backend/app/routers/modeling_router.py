@@ -311,7 +311,9 @@ async def _schedule_new_task(
             visible_prompt = (
                 f"{visible_prompt}\n\n【额外交付要求】\n{user_requirements.strip()}"
             )
-        await redis_manager.publish_message(task_id, UserMessage(content=visible_prompt))
+        await redis_manager.publish_message(
+            task_id, UserMessage(content=visible_prompt)
+        )
     except BaseException:
         _scheduled_tasks.discard(task_id)
         _pending_cancellations.discard(task_id)
@@ -319,7 +321,9 @@ async def _schedule_new_task(
             await redis_manager.delete_task_record(task_id)
         except Exception as cleanup_error:
             logger.warning(f"清理未入队任务档案失败: {cleanup_error}")
-        await _discard_failed_intake(Path("project/work_dir") / ensure_safe_task_id(task_id))
+        await _discard_failed_intake(
+            Path("project/work_dir") / ensure_safe_task_id(task_id)
+        )
         raise
     _scheduled_tasks.add(task_id)
     background_tasks.add_task(
@@ -385,7 +389,10 @@ async def submit_modeling(
         except (OSError, ValueError) as error:
             await _discard_failed_intake(workspace)
             logger.error(f"保存任务附件失败: {error}")
-            raise HTTPException(status_code=413 if isinstance(error, UploadLimitError) else 400, detail=str(error)) from error
+            raise HTTPException(
+                status_code=413 if isinstance(error, UploadLimitError) else 400,
+                detail=str(error),
+            ) from error
         except asyncio.CancelledError:
             await _discard_failed_intake(workspace)
             raise
@@ -447,7 +454,10 @@ async def run_modeling_task_async(
     _scheduled_tasks.discard(task_id)
 
     try:
-        if task_id in _pending_cancellations or await redis_manager.is_cancellation_requested(task_id):
+        if (
+            task_id in _pending_cancellations
+            or await redis_manager.is_cancellation_requested(task_id)
+        ):
             cancel_event.set()
             task.cancel()
 
@@ -474,7 +484,9 @@ async def run_modeling_task_async(
         # 发送任务完成状态
         await redis_manager.publish_message(
             task_id,
-            SystemMessage(content="任务处理完成", type="success", task_status="completed"),
+            SystemMessage(
+                content="任务处理完成", type="success", task_status="completed"
+            ),
         )
     except WorkflowApprovalRequired as pause:
         workflow.mark_status("awaiting_approval")
@@ -505,7 +517,9 @@ async def run_modeling_task_async(
         logger.info(f"任务 {task_id} 被取消")
         workflow.mark_status("stopped")
         _auto_resume_counts.pop(task_id, None)
-        stopped = SystemMessage(content="建模任务已停止", type="warning", task_status="stopped")
+        stopped = SystemMessage(
+            content="建模任务已停止", type="warning", task_status="stopped"
+        )
         await redis_manager.publish_message(task_id, stopped)
     except Exception as e:
         error_message = _exception_message(e)
@@ -601,12 +615,17 @@ async def _auto_resume_after_failure(
         _scheduled_tasks.discard(task_id)
         return
     try:
-        if task_id in _pending_cancellations or await redis_manager.is_cancellation_requested(task_id):
+        if (
+            task_id in _pending_cancellations
+            or await redis_manager.is_cancellation_requested(task_id)
+        ):
             _scheduled_tasks.discard(task_id)
             return
         await redis_manager.publish_message(
             task_id,
-            SystemMessage(content="自动续跑开始：从检查点恢复未完成节点", task_status="running"),
+            SystemMessage(
+                content="自动续跑开始：从检查点恢复未完成节点", task_status="running"
+            ),
         )
         await run_modeling_task_async(
             task_id,
@@ -917,7 +936,9 @@ async def cancel_task(task_id: str):
             checkpoint.mark_status("stopped")
             await redis_manager.publish_message(
                 task_id,
-                SystemMessage(content="任务已停止", type="warning", task_status="stopped"),
+                SystemMessage(
+                    content="任务已停止", type="warning", task_status="stopped"
+                ),
             )
             return CancelTaskResponse(
                 success=True,

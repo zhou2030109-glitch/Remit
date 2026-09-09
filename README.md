@@ -5,7 +5,7 @@
   <p>让 Agent 像一支数模队伍一样协作，让人始终握着题意、选型和交付的决定权。</p>
   <p>
     <a href="https://github.com/zhou2030109-glitch/Remit/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zhou2030109-glitch/Remit/actions/workflows/ci.yml/badge.svg" /></a>
-    <img alt="Python 3.12+" src="https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white" />
+    <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" />
     <img alt="Vue 3" src="https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white" />
     <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg" /></a>
     <a href="./README_EN.md"><img alt="English" src="https://img.shields.io/badge/English-README-64748B" /></a>
@@ -78,8 +78,8 @@ Remit 是一个本地优先的开源数学建模 AI 助手（数模 Agent），�
 ## 运行要求
 
 - Windows 10/11（桌面启动器）、macOS 12+/Linux（脚本启动）或支持 Docker Compose 的系统；
-- Python 3.12+ 与 [uv](https://docs.astral.sh/uv/)；
-- Node.js 20+ 与 pnpm 10；
+- Python 3.12（见 `backend/.python-version`）与 [uv](https://docs.astral.sh/uv/)；
+- Node.js 24（见 `frontend/.node-version`）与 pnpm 10.6.3；
 - 完整工作流需要 Redis。Windows 源码模式可使用仓库内置的 Redis 运行文件；
   macOS 通过 `brew install redis` 安装，Linux 使用发行版的软件包管理器；
   启动脚本会在 16379 端口拉起一个 Remit 专属实例，且不会接管外部 Redis。
@@ -172,10 +172,12 @@ COORDINATOR_MAX_TOKENS=8192
 ```bash
 cd backend
 uv run ruff check app tests
+uv run ruff format --check app tests
 uv run pytest tests -q
 
 cd ../frontend
-pnpm run lint
+pnpm run check
+pnpm run typecheck
 pnpm run test
 pnpm run build
 
@@ -183,6 +185,8 @@ cd ..
 # 仓库级启动器与配置契约测试（Windows 使用 .venv\Scripts\python.exe）
 backend/.venv/bin/python -m pytest tests -q
 ```
+
+开发环境、CI 与发布流程见[开发与发布](docs/development.md)。
 
 Windows 安装包可通过以下命令生成，默认产物位于当前用户本地应用数据目录下的
 `Remit/build/output/RemitSetup.exe`：

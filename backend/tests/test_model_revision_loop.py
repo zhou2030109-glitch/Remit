@@ -285,7 +285,9 @@ class ModelRevisionAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.verdict, "manual_review")
         self.assertIsNone(result.revision_plan)
 
-    async def test_invalid_execution_reviews_fall_back_without_recomputing(self) -> None:
+    async def test_invalid_execution_reviews_fall_back_without_recomputing(
+        self,
+    ) -> None:
         agent = ModelerAgent("task", MagicMock())
         agent._chat = AsyncMock(  # type: ignore[method-assign]
             return_value=SimpleNamespace(

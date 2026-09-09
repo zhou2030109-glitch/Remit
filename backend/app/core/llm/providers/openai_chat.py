@@ -59,7 +59,9 @@ class OpenAIChatProvider(BaseProvider):
             reasoning_content=getattr(message, "reasoning_content", None),
             finish_reason=choice.finish_reason,
             tool_calls=[
-                ToolCall(id=tc.id, name=tc.function.name, arguments=tc.function.arguments)
+                ToolCall(
+                    id=tc.id, name=tc.function.name, arguments=tc.function.arguments
+                )
                 for tc in message.tool_calls or []
             ],
             usage=Usage(

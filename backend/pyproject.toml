@@ -7,8 +7,8 @@ license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     # Web 框架与实时通道
-    "fastapi[standard]>=0.115.8",
-    "uvicorn[standard]>=0.34.0",
+    "fastapi[standard]>=0.141.1",
+    "uvicorn[standard]>=0.52.4",
     "websocket>=0.2.1",
     "aiofile>=3.9.0",
     # 任务队列与状态存储
@@ -19,9 +19,10 @@ dependencies = [
     "openai>=1.65.4",
     "anthropic>=0.40.0",
     "httpx[socks]>=0.28.1",
-    "requests>=2.32.0",
+    "python-multipart>=0.0.32",
+    "requests>=2.34.2",
     # 配置与数据校验
-    "pydantic>=2.10.6",
+    "pydantic>=2.13.5",
     "pydantic-settings>=2.8.0",
     # 代码执行（本地 Jupyter 内核 / E2B 沙箱）
     "ipykernel>=6.29.5",
@@ -50,7 +51,7 @@ dependencies = [
     "pymupdf>=1.24.0",
     "python-docx>=1.1.2",
     "pypandoc-binary>=1.15",
-    "pillow>=11.0.0",
+    "pillow>=12.3.0",
     "ansi2html>=1.9.2",
     # 桌面壳（托盘 / 内嵌窗口）
     "pystray>=0.19.5",

@@ -497,9 +497,7 @@ class RemitWorkFlow(WorkFlow):
                     f"{node_id} 自动质量门未通过，且人工审核已关闭；"
                     "任务已明确失败，不会把不完整产物自动放行。"
                 )
-            logger.info(
-                f"人工审核已关闭，节点 {node_id}（{checkpoint_key}）自动继续"
-            )
+            logger.info(f"人工审核已关闭，节点 {node_id}（{checkpoint_key}）自动继续")
             return None
 
         approval = self.checkpoint.request_approval(

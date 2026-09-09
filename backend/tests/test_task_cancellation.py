@@ -24,14 +24,10 @@ class TaskCancellationTests(unittest.IsolatedAsyncioTestCase):
     def test_failure_policy_keeps_blank_errors_actionable(self) -> None:
         self.assertEqual(_exception_message(TimeoutError()), "TimeoutError")
         self.assertFalse(
-            _is_transient_task_failure(
-                RuntimeError("复杂度保护器拒绝执行")
-            )
+            _is_transient_task_failure(RuntimeError("复杂度保护器拒绝执行"))
         )
         self.assertTrue(
-            _is_transient_task_failure(
-                CoderAgentUnavailableError("provider offline")
-            )
+            _is_transient_task_failure(CoderAgentUnavailableError("provider offline"))
         )
 
     async def asyncTearDown(self) -> None:

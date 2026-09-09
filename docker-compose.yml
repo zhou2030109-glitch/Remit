@@ -3,12 +3,17 @@
 
 services:
   redis:
-    image: redis:alpine
+    image: redis:7.4-alpine
     container_name: remit_redis
     ports:
       - "16379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build:
@@ -31,8 +36,16 @@ services:
       - ./backend/project/work_dir:/app/project/work_dir
       # 依赖环境复用，避免重复构建
       - backend_venv:/app/.venv
+    command: ["uv", "run", "--no-dev", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--ws-ping-interval", "60", "--ws-ping-timeout", "120"]
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,urllib.request; s=json.load(urllib.request.urlopen('http://127.0.0.1:8000/status',timeout=3)); raise SystemExit(0 if s['redis']['status']=='running' else 1)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 4
     stdin_open: true
     tty: true
 
@@ -48,7 +61,8 @@ services:
       # 匿名卷隔离容器内依赖，防止被主机 node_modules 覆盖
       - /app/node_modules
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     stdin_open: true
     tty: true
 

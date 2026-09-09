@@ -125,7 +125,9 @@ class LocalExecutionWatchdogTests(unittest.IsolatedAsyncioTestCase):
                     self.assertFalse(worker_finished.is_set())
                     execution_order.append("loop_progressed")
                     loop_progressed.set()
-                    output, failed, error = await asyncio.wait_for(execution, timeout=10)
+                    output, failed, error = await asyncio.wait_for(
+                        execution, timeout=10
+                    )
                 finally:
                     release_worker.set()
                     loop_progressed.set()

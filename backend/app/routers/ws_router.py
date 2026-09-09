@@ -37,7 +37,9 @@ async def _watch_client(websocket: WebSocket) -> None:
     try:
         disconnected = False
         while not disconnected:
-            disconnected = (await websocket.receive()).get("type") == "websocket.disconnect"
+            disconnected = (await websocket.receive()).get(
+                "type"
+            ) == "websocket.disconnect"
     except WebSocketDisconnect:
         pass
     except RuntimeError as exc:
@@ -106,7 +108,9 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str) -> None:
             now = asyncio.get_running_loop().time()
             if now >= next_replay:
                 while True:
-                    history = await redis_manager.load_task_messages(safe_task_id, after, 200)
+                    history = await redis_manager.load_task_messages(
+                        safe_task_id, after, 200
+                    )
                     for payload in history:
                         if not await _try_send(websocket, payload):
                             return
@@ -121,7 +125,11 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str) -> None:
                         pass
 
             try:
-                incoming = await pubsub.get_message(ignore_subscribe_messages=True) if pubsub else None
+                incoming = (
+                    await pubsub.get_message(ignore_subscribe_messages=True)
+                    if pubsub
+                    else None
+                )
             except WebSocketDisconnect:
                 break
             except Exception as exc:
@@ -175,6 +183,8 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str) -> None:
             if pubsub is not None:
                 await pubsub.aclose()
         except Exception as exc:
-            logger.warning(f"WebSocket Redis 连接关闭失败 task_id={safe_task_id}: {exc}")
+            logger.warning(
+                f"WebSocket Redis 连接关闭失败 task_id={safe_task_id}: {exc}"
+            )
         ws_manager.disconnect(websocket)
         logger.info(f"WebSocket connection closed for task: {safe_task_id}")

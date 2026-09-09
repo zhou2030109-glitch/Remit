@@ -115,9 +115,7 @@ def audit_paper_style(text: str) -> PaperStyleAudit:
             + "、".join(f"{phrase}×{count}" for phrase, count in phrase_hits.items())
         )
     if unsupported_attributions:
-        issues.append(
-            f"发现 {len(unsupported_attributions)} 处无可核验引用的模糊归因"
-        )
+        issues.append(f"发现 {len(unsupported_attributions)} 处无可核验引用的模糊归因")
     if duplicate_sentences:
         issues.append(f"发现 {len(duplicate_sentences)} 个重复长句")
     if additionally_count > 2:

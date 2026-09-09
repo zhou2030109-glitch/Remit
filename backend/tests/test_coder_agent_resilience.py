@@ -85,9 +85,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
             ),
             patch("app.core.agents.coder_agent.asyncio.sleep", new=AsyncMock()),
         ):
-            with self.assertRaisesRegex(
-                CoderAgentUnavailableError, "provider offline"
-            ):
+            with self.assertRaisesRegex(CoderAgentUnavailableError, "provider offline"):
                 await agent.run("finish ques1", "ques1")
         self.assertEqual(agent._chat.await_count, 1)
 
@@ -120,7 +118,10 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
     async def test_chat_turn_budget_is_per_run_not_whole_workflow(self) -> None:
         agent = _make_agent(max_chat_turns=1)
         agent._chat = AsyncMock(
-            side_effect=[StandardResponse(content="first"), StandardResponse(content="second")]
+            side_effect=[
+                StandardResponse(content="first"),
+                StandardResponse(content="second"),
+            ]
         )
 
         with patch(

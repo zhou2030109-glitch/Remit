@@ -112,9 +112,7 @@ class GeminiProviderTests(unittest.TestCase):
                 "/models/gemini-test:generateContent"
             )
         )
-        self.assertIn(
-            "systemInstruction", _FakeAsyncClient.last_request["json"]
-        )
+        self.assertIn("systemInstruction", _FakeAsyncClient.last_request["json"])
 
 
 class ModelCouncilSchemaTests(unittest.TestCase):
@@ -214,14 +212,10 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
         primary = llm("gpt-5.6-sol", "https://same.example/v1")
         scout = llm("gpt-5.6-sol", "https://same.example/v1/")
         critic = llm("gpt-5.6-sol", "https://same.example/v1")
-        self.assertFalse(
-            ModelCouncil.reviewers_are_independent(primary, scout, critic)
-        )
+        self.assertFalse(ModelCouncil.reviewers_are_independent(primary, scout, critic))
 
         critic.model = "another-model"
-        self.assertTrue(
-            ModelCouncil.reviewers_are_independent(primary, scout, critic)
-        )
+        self.assertTrue(ModelCouncil.reviewers_are_independent(primary, scout, critic))
 
     async def test_multi_question_review_uses_one_strategic_critic_call(self):
         critic = _PortfolioCritic()
@@ -289,9 +283,7 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(set(review.question_reviews), {"ques1", "ques2"})
         self.assertEqual(len(critic.payloads), 1)
-        self.assertEqual(
-            set(critic.payloads[0]["questions"]), {"ques1", "ques2"}
-        )
+        self.assertEqual(set(critic.payloads[0]["questions"]), {"ques1", "ques2"})
         self.assertEqual(council.critic_calls_used, 1)
 
     async def test_refusal_falls_back_and_sensitive_terms_are_redacted(self):
@@ -310,9 +302,7 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
             ques_count=1,
         )
         primary = ModelerToCoder(
-            questions_solution={
-                "ques1": "使用孕妇分组交叉验证分析胎儿染色体指标。"
-            }
+            questions_solution={"ques1": "使用孕妇分组交叉验证分析胎儿染色体指标。"}
         )
         scout = ModelScoutProposal.model_validate(
             {

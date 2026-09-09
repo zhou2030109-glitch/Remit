@@ -167,7 +167,10 @@ class CoderAgent(Agent):
                     detail=outcome[:160],
                 )
                 await self.append_chat_history(
-                    {"role": "user", "content": get_reflection_prompt(outcome, self._last_code)}
+                    {
+                        "role": "user",
+                        "content": get_reflection_prompt(outcome, self._last_code),
+                    }
                 )
 
     # ---- 步骤拆分 ----
@@ -188,7 +191,9 @@ class CoderAgent(Agent):
         )
         await self.append_chat_history({"role": "user", "content": prompt})
 
-    def _enforce_budget(self, retry_count: int, last_error: str, last_source: str) -> None:
+    def _enforce_budget(
+        self, retry_count: int, last_error: str, last_source: str
+    ) -> None:
         """两类预算耗尽时抛出对应异常；轮次预算共用通用异常。"""
         if retry_count >= self.max_retries:
             if last_source == "model":
@@ -215,7 +220,8 @@ class CoderAgent(Agent):
 
     async def _notify(self, content: str, level: str) -> None:
         await redis_manager.publish_message(
-            self.task_id, SystemMessage(content=content, type=level)  # type: ignore[arg-type]
+            self.task_id,
+            SystemMessage(content=content, type=level),  # type: ignore[arg-type]
         )
 
     async def _call_model(self, tools: list[dict]) -> Any:
@@ -285,5 +291,7 @@ class CoderAgent(Agent):
             logger.warning(f"代码执行错误: {error_detail}")
             return error_detail
 
-        await publish_activity(self.task_id, "代码执行成功，继续下一步", category="code")
+        await publish_activity(
+            self.task_id, "代码执行成功，继续下一步", category="code"
+        )
         return "ok"

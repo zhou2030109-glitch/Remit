@@ -197,9 +197,7 @@ def _compile_latex(tex_path: Path, build_dir: Path) -> str:
                 f"res.tex 第 {compile_pass} 次编译失败（退出码 "
                 f"{completed.returncode}）：{tail}"
             )
-    (build_dir / "compile-output.txt").write_text(
-        "\n".join(logs), encoding="utf-8"
-    )
+    (build_dir / "compile-output.txt").write_text("\n".join(logs), encoding="utf-8")
     return Path(engine).name
 
 
@@ -230,11 +228,12 @@ def inspect_pdf_artifact(
             )
         first_rect = document[0].rect
         expected = (
-            (595.3, 841.9)
-            if comp_template == CompTemplate.CHINA
-            else (612.0, 792.0)
+            (595.3, 841.9) if comp_template == CompTemplate.CHINA else (612.0, 792.0)
         )
-        if abs(first_rect.width - expected[0]) > 8 or abs(first_rect.height - expected[1]) > 8:
+        if (
+            abs(first_rect.width - expected[0]) > 8
+            or abs(first_rect.height - expected[1]) > 8
+        ):
             label = "A4" if comp_template == CompTemplate.CHINA else "US Letter"
             raise PaperRenderError(f"res.pdf 首页纸型不是要求的 {label}")
 
@@ -247,18 +246,27 @@ def inspect_pdf_artifact(
                 blank_pages.append(index + 1)
             for block in page.get_text("blocks"):
                 x0, y0, x1, y1 = block[:4]
-                if x0 < -2 or y0 < -2 or x1 > page.rect.width + 2 or y1 > page.rect.height + 2:
+                if (
+                    x0 < -2
+                    or y0 < -2
+                    or x1 > page.rect.width + 2
+                    or y1 > page.rect.height + 2
+                ):
                     raise PaperRenderError(f"res.pdf 第 {index + 1} 页存在越界文本")
         if blank_pages:
             raise PaperRenderError(
                 "res.pdf 含完全空白页: " + ", ".join(map(str, blank_pages))
             )
         if total_text_chars < 1_000:
-            raise PaperRenderError("res.pdf 可提取正文不足 1000 字符，疑似字体或渲染损坏")
+            raise PaperRenderError(
+                "res.pdf 可提取正文不足 1000 字符，疑似字体或渲染损坏"
+            )
 
         sampled_pages = sorted({0, page_count // 2, page_count - 1})
         for index in sampled_pages:
-            pixmap = document[index].get_pixmap(matrix=pymupdf.Matrix(1, 1), alpha=False)
+            pixmap = document[index].get_pixmap(
+                matrix=pymupdf.Matrix(1, 1), alpha=False
+            )
             sample = pixmap.samples[:: max(1, pixmap.n * 20)]
             if not sample or all(value > 248 for value in sample):
                 raise PaperRenderError(f"res.pdf 第 {index + 1} 页渲染结果近似全白")
@@ -406,7 +414,9 @@ def compact_abstract(markdown: str) -> str:
 
     for paragraph in paragraphs:
         if KEYWORD_RE.match(paragraph):
-            keyword_lines.append("**关键词：** " + KEYWORD_RE.sub("", paragraph).strip())
+            keyword_lines.append(
+                "**关键词：** " + KEYWORD_RE.sub("", paragraph).strip()
+            )
             continue
         abstract_blocks.append(compact_abstract_paragraph(paragraph))
 
@@ -415,7 +425,10 @@ def compact_abstract(markdown: str) -> str:
     if len("\n\n".join(abstract_blocks)) > MAX_ABSTRACT_CHARS:
         abstract_blocks = [compress_abstract_paragraph(p) for p in abstract_blocks]
     if len("\n\n".join(abstract_blocks)) > MAX_ABSTRACT_CHARS:
-        abstract_blocks = [limit_abstract_paragraph(p, 140 if idx == 0 else 110) for idx, p in enumerate(abstract_blocks)]
+        abstract_blocks = [
+            limit_abstract_paragraph(p, 140 if idx == 0 else 110)
+            for idx, p in enumerate(abstract_blocks)
+        ]
 
     rebuilt: list[str] = [*prefix, ""]
     for block in abstract_blocks:
@@ -628,7 +641,9 @@ def build_composite_figure(
     index: int,
 ) -> Path:
     """Build a composite image from a small group of related figures."""
-    available = [(path, label) for path, label in zip(image_paths, labels) if path.exists()]
+    available = [
+        (path, label) for path, label in zip(image_paths, labels) if path.exists()
+    ]
     if not available:
         return image_paths[0]
 
@@ -697,7 +712,9 @@ def build_composite_figure(
     return composite_path.relative_to(work_dir)
 
 
-def load_font(work_dir: Path, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+def load_font(
+    work_dir: Path, size: int
+) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     """Load a Chinese-capable font."""
     backend_root = Path(__file__).resolve().parents[2]
     candidates = [
@@ -749,7 +766,16 @@ def append_source_code_appendix(markdown: str, work_dir: Path) -> str:
 
 def collect_code_candidates(work_dir: Path) -> list[Path]:
     """Pick the most relevant code files for the appendix."""
-    score_tokens = ("run", "fit", "predict", "policy", "search", "bootstrap", "stable", "core")
+    score_tokens = (
+        "run",
+        "fit",
+        "predict",
+        "policy",
+        "search",
+        "bootstrap",
+        "stable",
+        "core",
+    )
     candidates: list[tuple[int, Path]] = []
     for path in work_dir.iterdir():
         if not path.is_file() or path.suffix.lower() not in {".m", ".py"}:
@@ -760,7 +786,12 @@ def collect_code_candidates(work_dir: Path) -> list[Path]:
             score -= 100
         if name.startswith("q2"):
             score += 90
-        if name.startswith("ques1") or name.startswith("ques2") or name.startswith("ques3") or name.startswith("ques4"):
+        if (
+            name.startswith("ques1")
+            or name.startswith("ques2")
+            or name.startswith("ques3")
+            or name.startswith("ques4")
+        ):
             score += 80
         score += sum(15 for token in score_tokens if token in name)
         score += min(path.stat().st_size // 20000, 20)
@@ -980,7 +1011,9 @@ def convert_markdown_to_pdf(
         )
         return
     except Exception as exc:
-        logger.warning("pandoc pdf export failed, falling back to HTML/WeasyPrint: %s", exc)
+        logger.warning(
+            "pandoc pdf export failed, falling back to HTML/WeasyPrint: %s", exc
+        )
 
     html = pypandoc.convert_text(
         markdown,

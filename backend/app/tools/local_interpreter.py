@@ -62,7 +62,10 @@ class LocalCodeInterpreter(BaseCodeInterpreter):
         requested_timeout = timeout or settings.PYTHON_EXECUTION_TIMEOUT_SECONDS
         self.timeout = max(
             0.01,
-            min(float(requested_timeout), float(settings.CODE_EXECUTION_HARD_LIMIT_SECONDS)),
+            min(
+                float(requested_timeout),
+                float(settings.CODE_EXECUTION_HARD_LIMIT_SECONDS),
+            ),
         )
         self.km = None
         self.kc = None
@@ -202,14 +205,14 @@ class LocalCodeInterpreter(BaseCodeInterpreter):
         for mark, payload in marks:
             if mark in _TEXT_MARKS:
                 text_parts.append(self._truncate_text(f"[{mark}]\n{payload}"))
-                display.append(ResultModel(res_type="result", format="text", msg=payload))
+                display.append(
+                    ResultModel(res_type="result", format="text", msg=payload)
+                )
                 self.notebook_serializer.add_code_cell_output_to_notebook(payload)
             elif mark in _IMAGE_MARKS:
                 fmt = _IMAGE_MARKS[mark]
                 text_parts.append(f"[{mark} 图片已生成，内容为 base64，未展示]")
-                self.notebook_serializer.add_image_to_notebook(
-                    payload, f"image/{fmt}"
-                )
+                self.notebook_serializer.add_image_to_notebook(payload, f"image/{fmt}")
                 display.append(ResultModel(res_type="result", format=fmt, msg=payload))
             elif mark == "error":
                 failed = True
@@ -296,8 +299,12 @@ class LocalCodeInterpreter(BaseCodeInterpreter):
             data = content.get("data", {})
             prefix = "execute_result" if msg_type == "execute_result" else "display"
             out = []
-            for key, mime in (("text", "text/plain"), ("html", "text/html"),
-                              ("png", "image/png"), ("jpeg", "image/jpeg")):
+            for key, mime in (
+                ("text", "text/plain"),
+                ("html", "text/html"),
+                ("png", "image/png"),
+                ("jpeg", "image/jpeg"),
+            ):
                 if mime in data:
                     out.append((f"{prefix}_{key}", data[mime]))
             return out

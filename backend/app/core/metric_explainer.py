@@ -86,9 +86,7 @@ def _explain_one(metric: ExecutionMetric) -> MetricExplanation:
         friendly = "预测正确率" + (
             "（各类别平均）" if name == "balanced_accuracy" else ""
         )
-        meaning = (
-            f"每 100 个样本大约能判断对 {value * 100:.0f} 个。"
-        ) + baseline
+        meaning = (f"每 100 个样本大约能判断对 {value * 100:.0f} 个。") + baseline
         verdict = "good" if value >= 0.9 else ("ok" if value >= 0.75 else "poor")
         return MetricExplanation(
             name=metric.name,

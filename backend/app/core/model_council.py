@@ -393,8 +393,7 @@ class ModelCouncil:
         return ModelCouncilReview.model_validate(
             {
                 "question_reviews": question_reviews,
-                "global_risks": list(scout.global_data_risks)
-                or ["外部审稿服务不可用"],
+                "global_risks": list(scout.global_data_risks) or ["外部审稿服务不可用"],
                 "minimum_experiment_matrix": [
                     "简单基线与候选在相同划分、相同指标和硬时间预算下对照"
                 ],

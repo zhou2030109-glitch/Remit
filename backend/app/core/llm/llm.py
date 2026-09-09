@@ -126,9 +126,7 @@ def _repair_tool_call_chain(history: list) -> list:
             continue
 
         if msg.get("tool_calls"):
-            surviving = [
-                tc for tc in msg["tool_calls"] if tc.get("id") in answered_ids
-            ]
+            surviving = [tc for tc in msg["tool_calls"] if tc.get("id") in answered_ids]
             if surviving:
                 cleaned.append({**msg, "tool_calls": surviving})
             elif msg.get("content"):
@@ -245,7 +243,9 @@ class LLM:
                 )
             except Exception as error:
                 attempt += 1
-                retry_limit_now = self._handle_failure(error, agent_name, attempt, retry_limit)
+                retry_limit_now = self._handle_failure(
+                    error, agent_name, attempt, retry_limit
+                )
                 if attempt >= retry_limit_now:
                     if await self._switch_to_fallback_quietly():
                         attempt = 0
@@ -270,8 +270,7 @@ class LLM:
                 except Exception as error:
                     # 响应已经拿到；消息通道故障不能让同一付费请求重做
                     logger.error(
-                        "模型响应已成功返回，但消息发布失败；"
-                        f"不会重试模型请求: {error}"
+                        f"模型响应已成功返回，但消息发布失败；不会重试模型请求: {error}"
                     )
             return response
 
@@ -306,8 +305,7 @@ class LLM:
                     self.task_id,
                     SystemMessage(
                         content=(
-                            "主模型连接持续失败，"
-                            f"已切换备用模型 {self.model} 继续"
+                            f"主模型连接持续失败，已切换备用模型 {self.model} 继续"
                         ),
                         type="warning",
                     ),
@@ -316,9 +314,7 @@ class LLM:
                 pass
         return True
 
-    def _make_delta_hook(
-        self, agent_name: str, sub_title: str | None, publish: bool
-    ):
+    def _make_delta_hook(self, agent_name: str, sub_title: str | None, publish: bool):
         """构造流式增量回调：节流到每秒一条尾部预览。"""
         if not (publish and self.task_id):
             return None

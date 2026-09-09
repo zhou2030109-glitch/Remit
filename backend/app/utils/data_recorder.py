@@ -142,7 +142,9 @@ class DataRecorder:
     ) -> float:
         """按价目表估算单次调用费用（元）。"""
         price = _PRICE_PER_K.get(model, _DEFAULT_PRICE)
-        return (prompt_tokens * price["prompt"] + completion_tokens * price["completion"]) / 1000.0
+        return (
+            prompt_tokens * price["prompt"] + completion_tokens * price["completion"]
+        ) / 1000.0
 
     # ---- 汇总 ----
 
@@ -158,12 +160,16 @@ class DataRecorder:
 
         headers = ["Agent", "Chats", "Prompt", "Completion", "Total", "Cost ($)"]
         rows = [
-            self._usage_row(name, usage)
-            for name, usage in self.token_usage.items()
+            self._usage_row(name, usage) for name, usage in self.token_usage.items()
         ]
         totals = {
             key: sum(usage[key] for usage in self.token_usage.values())
-            for key in ("chat_count", "prompt_tokens", "completion_tokens", "total_tokens")
+            for key in (
+                "chat_count",
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+            )
         }
         totals["cost"] = self.total_cost
         rows.append(self._usage_row("TOTAL", totals))

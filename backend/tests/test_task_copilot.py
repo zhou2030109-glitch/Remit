@@ -52,7 +52,9 @@ class TaskCopilotTests(unittest.IsolatedAsyncioTestCase):
                     common_router.TaskCopilotRequest(action="分析当前结果"),
                 )
 
-        self.assertEqual(response.response.content, "当前只有 EDA 证据，尚无可比较的 OOF 指标。")
+        self.assertEqual(
+            response.response.content, "当前只有 EDA 证据，尚无可比较的 OOF 指标。"
+        )
         self.assertIn("只依据真实落盘证据", llm.history[0]["content"])
         self.assertEqual(publish.await_count, 2)
 

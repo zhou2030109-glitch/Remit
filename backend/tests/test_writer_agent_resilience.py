@@ -37,7 +37,9 @@ class WriterAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
                         ),
                     ],
                 ),
-                StandardResponse(content="Complete paper section from verified evidence."),
+                StandardResponse(
+                    content="Complete paper section from verified evidence."
+                ),
             ]
         )
 
@@ -59,7 +61,10 @@ class WriterAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
         tool_messages = [
             message for message in agent.chat_history if message.get("role") == "tool"
         ]
-        self.assertEqual({message["tool_call_id"] for message in tool_messages}, {"search-1", "search-2"})
+        self.assertEqual(
+            {message["tool_call_id"] for message in tool_messages},
+            {"search-1", "search-2"},
+        )
         self.assertTrue(
             all("请勿编造引文" in message["content"] for message in tool_messages)
         )
