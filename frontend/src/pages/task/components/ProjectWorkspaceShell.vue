@@ -365,6 +365,12 @@ watch(wideWorkspace, (isWide) => {
 </script>
 
 <template>
+  <a
+    href="#project-workspace-main"
+    class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[200] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground focus:shadow-lg"
+  >
+    跳到主要内容
+  </a>
   <div class="fixed inset-0 flex min-h-0 flex-col bg-background">
     <ProjectHeader
       :task-id="props.taskId"
@@ -402,7 +408,7 @@ watch(wideWorkspace, (isWide) => {
 
       <ResizablePanelGroup direction="horizontal" class="min-w-0 flex-1">
         <ResizablePanel :default-size="copilotOpen ? 75 : 100" :min-size="52" class="min-w-0">
-          <main class="flex h-full min-h-0 min-w-0 flex-col" :aria-label="`${stageLabels[activeStage]}工作区`">
+          <main id="project-workspace-main" class="flex h-full min-h-0 min-w-0 flex-col" :aria-label="`${stageLabels[activeStage]}工作区`">
             <WorkflowProgress
               :progress="taskStore.latestProgress"
               :is-running="taskStore.isRunning"
@@ -410,7 +416,7 @@ watch(wideWorkspace, (isWide) => {
               :waiting-label="taskStore.pendingApproval?.node_label ?? ''"
             />
 
-            <div v-if="taskStore.pendingApproval" class="flex shrink-0 flex-wrap items-center gap-2 border-b border-[hsl(var(--warning)/0.28)] bg-[hsl(var(--warning-subtle))] px-4 py-2">
+            <div v-if="taskStore.pendingApproval" class="flex shrink-0 flex-wrap items-center gap-2 border-b border-[hsl(var(--warning)/0.28)] bg-[hsl(var(--warning-subtle))] px-4 py-2" role="status" aria-live="polite">
               <CircleAlert class="h-3.5 w-3.5 text-[hsl(var(--warning))]" aria-hidden="true" />
               <span class="min-w-0 flex-1 truncate text-[11px] font-medium text-[hsl(var(--warning))]">
                 {{ approvalBannerText }}
@@ -428,12 +434,12 @@ watch(wideWorkspace, (isWide) => {
                 <h2 class="text-xs font-semibold">{{ stageLabels[activeStage] }}</h2>
                 <span class="text-[10px] text-muted-foreground">结构化运行记录与真实文件索引</span>
               </div>
-              <div class="flex rounded-md border bg-muted/40 p-0.5">
-                <button type="button" class="inline-flex h-6 items-center gap-1 rounded px-2 text-[10px]" :class="!showCodeAssets ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground'" @click="showCodeAssets = false">
+              <div class="flex rounded-md border bg-muted/40 p-0.5" role="group" aria-label="运行记录视图">
+                <button type="button" class="inline-flex h-6 items-center gap-1 rounded px-2 text-[10px]" :class="!showCodeAssets ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground'" :aria-pressed="!showCodeAssets" @click="showCodeAssets = false">
                   <ListChecks class="h-3 w-3" aria-hidden="true" />
                   运行摘要
                 </button>
-                <button type="button" class="inline-flex h-6 items-center gap-1 rounded px-2 text-[10px]" :class="showCodeAssets ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground'" @click="showCodeAssets = true">
+                <button type="button" class="inline-flex h-6 items-center gap-1 rounded px-2 text-[10px]" :class="showCodeAssets ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground'" :aria-pressed="showCodeAssets" @click="showCodeAssets = true">
                   <FileCode2 class="h-3 w-3" aria-hidden="true" />
                   代码与文件
                 </button>

@@ -20,7 +20,9 @@ onMounted(syncTheme);
 <template>
 	<button
 		type="button"
+		role="switch"
 		class="theme-switch"
+		:aria-checked="isDark"
 		:aria-label="isDark ? '切换到日间模式' : '切换到夜间模式'"
 		:title="isDark ? '日间模式' : '夜间模式'"
 		@click="toggleTheme"

@@ -49,18 +49,24 @@ function describeStatusError(error: unknown): string {
 	return "本地后端暂时不可达，请确认 Remit 仍在托盘运行";
 }
 
-/** 状态对应的容器样式 */
+/** 状态中文标签 */
+const STATUS_LABELS: Record<ServiceHealth["status"], string> = {
+	running: "正常",
+	error: "异常",
+	unknown: "检查中",
+};
+
 const CONTAINER_CLASSES: Record<ServiceHealth["status"], string> = {
-	running: "bg-green-100 text-green-800",
-	error: "bg-red-100 text-red-800",
-	unknown: "bg-gray-100 text-gray-800",
+	running: "bg-[hsl(var(--success-subtle))] text-[hsl(var(--success))]",
+	error: "bg-[hsl(var(--warning-subtle))] text-[hsl(var(--danger))]",
+	unknown: "bg-muted text-muted-foreground",
 };
 
 /** 状态对应的指示点颜色 */
 const DOT_CLASSES: Record<ServiceHealth["status"], string> = {
-	running: "bg-green-500",
-	error: "bg-red-500",
-	unknown: "bg-gray-400",
+	running: "bg-[hsl(var(--success))]",
+	error: "bg-[hsl(var(--danger))]",
+	unknown: "bg-muted-foreground",
 };
 
 /** 轮询服务状态；服务由正常转为错误时弹一次提醒 */
@@ -120,17 +126,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex items-center gap-2">
+  <div class="flex items-center gap-2" role="status" aria-live="polite" aria-atomic="true">
     <div
       v-for="(health, name) in services"
       :key="name"
-      class="flex items-center gap-1 px-2 py-1 rounded-md text-xs"
+      class="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs"
       :class="CONTAINER_CLASSES[health.status]"
       :title="health.message"
-      :aria-label="`${name}：${health.status}。${health.message}`"
+      :aria-label="`${name}：${STATUS_LABELS[health.status]}。${health.message}`"
     >
-	  <div class="w-2 h-2 rounded-full" :class="DOT_CLASSES[health.status]" aria-hidden="true"></div>
+      <div class="h-2 w-2 rounded-full" :class="DOT_CLASSES[health.status]" aria-hidden="true"></div>
       <span class="capitalize">{{ name }}</span>
+      <span class="text-[10px] opacity-80">{{ STATUS_LABELS[health.status] }}</span>
     </div>
   </div>
 </template>
