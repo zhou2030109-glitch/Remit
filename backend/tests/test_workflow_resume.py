@@ -216,8 +216,10 @@ class WorkflowResumeTests(unittest.IsolatedAsyncioTestCase):
                 )
 
                 checkpoint.request_revision(
-                    checkpoint.load(), pending["checkpoint_id"],
-                    "Use a different model and rerun the evidence", target,
+                    checkpoint.load(),
+                    pending["checkpoint_id"],
+                    "Use a different model and rerun the evidence",
+                    target,
                 )
 
                 self.assertTrue(root.joinpath("input.csv").is_file())

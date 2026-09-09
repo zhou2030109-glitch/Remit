@@ -10,9 +10,7 @@ from pathlib import Path
 from app.config.setting import settings
 
 _MAX_REFERENCED_SOURCE_BYTES = 1_000_000
-_MATLAB_RUN_RE = re.compile(
-    r"\brun\s*\(\s*['\"]([^'\"]+\.m)['\"]\s*\)", re.IGNORECASE
-)
+_MATLAB_RUN_RE = re.compile(r"\brun\s*\(\s*['\"]([^'\"]+\.m)['\"]\s*\)", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -23,7 +21,9 @@ class ComplexityAssessment:
     reason: str = ""
 
 
-def _referenced_matlab_sources(code: str, work_dir: str | Path) -> list[tuple[str, str]]:
+def _referenced_matlab_sources(
+    code: str, work_dir: str | Path
+) -> list[tuple[str, str]]:
     """读取直接 ``run('file.m')`` 引用，且禁止逃出任务目录。"""
     root = Path(work_dir).resolve()
     sources: list[tuple[str, str]] = []
@@ -33,7 +33,10 @@ def _referenced_matlab_sources(code: str, work_dir: str | Path) -> list[tuple[st
             candidate.relative_to(root)
         except ValueError:
             continue
-        if not candidate.is_file() or candidate.stat().st_size > _MAX_REFERENCED_SOURCE_BYTES:
+        if (
+            not candidate.is_file()
+            or candidate.stat().st_size > _MAX_REFERENCED_SOURCE_BYTES
+        ):
             continue
         sources.append((candidate.name, candidate.read_text(encoding="utf-8-sig")))
     return sources
@@ -70,7 +73,10 @@ def _python_literal_loop_product(code: str) -> int:
             and isinstance(call.func, ast.Name)
             and call.func.id == "range"
             and call.args
-            and all(isinstance(arg, ast.Constant) and isinstance(arg.value, int) for arg in call.args)
+            and all(
+                isinstance(arg, ast.Constant) and isinstance(arg.value, int)
+                for arg in call.args
+            )
         ):
             return 1
         values = [int(arg.value) for arg in call.args]  # type: ignore[union-attr]
@@ -84,7 +90,9 @@ def _python_literal_loop_product(code: str) -> int:
         for statement in statements:
             if isinstance(statement, ast.For):
                 product = parent_product * range_size(statement)
-                maximum = max(maximum, product, visit_statements(statement.body, product))
+                maximum = max(
+                    maximum, product, visit_statements(statement.body, product)
+                )
             else:
                 children = [
                     child
@@ -128,8 +136,7 @@ def _matlab_risk(source: str) -> str:
         )
 
     bootstrap_counts = [
-        int(value)
-        for value in re.findall(r"\b(?:nboot|b)\s*=\s*(\d+)\b", lowered)
+        int(value) for value in re.findall(r"\b(?:nboot|b)\s*=\s*(\d+)\b", lowered)
     ]
     if (
         bootstrap_counts

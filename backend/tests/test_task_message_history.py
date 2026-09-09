@@ -154,8 +154,7 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
                 (task_dir / "res.md").write_text("output", encoding="utf-8")
 
             summaries = [
-                {"task_id": task_id, "status": "completed"}
-                for task_id in task_ids
+                {"task_id": task_id, "status": "completed"} for task_id in task_ids
             ]
             with (
                 patch(
@@ -175,7 +174,9 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
 
             self.assertTrue(response.success)
             self.assertEqual(response.deleted_count, 2)
-            self.assertTrue(all(not (work_root / task_id).exists() for task_id in task_ids))
+            self.assertTrue(
+                all(not (work_root / task_id).exists() for task_id in task_ids)
+            )
             self.assertEqual(
                 [call.args[0] for call in delete_record.await_args_list],
                 task_ids,
@@ -193,9 +194,7 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
                 "app.routers.common_router.redis_manager.list_task_summaries",
                 new=AsyncMock(return_value=summaries),
             ),
-            patch(
-                "app.routers.common_router._delete_task_work_dir"
-            ) as delete_work_dir,
+            patch("app.routers.common_router._delete_task_work_dir") as delete_work_dir,
             patch(
                 "app.routers.common_router.redis_manager.delete_task_record",
                 new=AsyncMock(),

@@ -14,7 +14,9 @@ from nbformat import v4 as nbf
 class NotebookSerializer:
     """维护单个任务目录下的 notebook.ipynb 文件。"""
 
-    def __init__(self, work_dir: str | None = None, notebook_name: str = "notebook.ipynb") -> None:
+    def __init__(
+        self, work_dir: str | None = None, notebook_name: str = "notebook.ipynb"
+    ) -> None:
         self.nb = nbf.new_notebook()
         self.notebook_path: str | None = None
         self.initialized = True
@@ -23,7 +25,9 @@ class NotebookSerializer:
         self.current_segmentation: str = ""
         self.init_notebook(work_dir, notebook_name)
 
-    def init_notebook(self, work_dir: str | None = None, notebook_name: str = "notebook.ipynb") -> None:
+    def init_notebook(
+        self, work_dir: str | None = None, notebook_name: str = "notebook.ipynb"
+    ) -> None:
         """确定 notebook 落盘位置；目录为空时仅驻留内存。"""
         if not work_dir:
             return
@@ -39,7 +43,9 @@ class NotebookSerializer:
     def write_to_notebook(self) -> None:
         """把当前内存状态刷到磁盘。"""
         if self.notebook_path:
-            Path(self.notebook_path).write_text(nbformat.writes(self.nb), encoding="utf-8")
+            Path(self.notebook_path).write_text(
+                nbformat.writes(self.nb), encoding="utf-8"
+            )
 
     # ---- 单元追加 ----
 
@@ -83,7 +89,9 @@ class NotebookSerializer:
         self.nb["cells"].append(nbf.new_markdown_cell(content))
         self.write_to_notebook()
 
-    def add_markdown_segmentation_to_notebook(self, content: str, segmentation: str) -> None:
+    def add_markdown_segmentation_to_notebook(
+        self, content: str, segmentation: str
+    ) -> None:
         """开一个新小节：切换当前小节并初始化其输出缓存。"""
         self.current_segmentation = segmentation
         self.segmentation_output_content[segmentation] = ""

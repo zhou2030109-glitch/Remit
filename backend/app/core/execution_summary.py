@@ -153,9 +153,7 @@ def _collect_metrics(evidence: dict[str, Any]) -> list[ExecutionMetric]:
                 or normalized.casefold() in existing
             ):
                 continue
-            metrics.append(
-                ExecutionMetric(name=normalized, model_value=model_value)
-            )
+            metrics.append(ExecutionMetric(name=normalized, model_value=model_value))
             if len(metrics) >= 4:
                 break
     return metrics
@@ -171,9 +169,7 @@ def _collect_table_previews(evidence: dict[str, Any]) -> list[TablePreview]:
         if not isinstance(table, dict):
             continue
         columns = [
-            str(column)
-            for column in table.get("columns", [])
-            if str(column).strip()
+            str(column) for column in table.get("columns", []) if str(column).strip()
         ][:_PREVIEW_MAX_COLUMNS]
         if not columns:
             continue
@@ -250,9 +246,7 @@ def build_execution_summary_message(
     if not isinstance(quality_report, dict):
         quality_report = {}
     artifact_list = sorted({str(item) for item in artifacts if str(item).strip()})
-    image_list = sorted(
-        {str(item) for item in paper_ready_images if str(item).strip()}
-    )
+    image_list = sorted({str(item) for item in paper_ready_images if str(item).strip()})
     selected_model = str(quality_report.get("selected_model", "")).strip()
     metrics = _collect_metrics(evidence)
     run_summary = _build_run_summary(

@@ -39,10 +39,7 @@ def _response_was_truncated(
     reason = str(response.finish_reason or "").strip().lower()
     if any(marker in reason for marker in _TRUNCATION_REASONS):
         return True
-    return (
-        requested_tokens > 0
-        and response.usage.completion_tokens >= requested_tokens
-    )
+    return requested_tokens > 0 and response.usage.completion_tokens >= requested_tokens
 
 
 def _expanded_output_budget(current: int) -> int:

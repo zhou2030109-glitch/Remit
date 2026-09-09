@@ -211,9 +211,13 @@ async def get_task_messages(
     limit: int | None = Query(default=None, ge=1, le=1000),
 ):
     try:
-        return await redis_manager.load_task_messages(http_task_id(task_id), after, limit)
+        return await redis_manager.load_task_messages(
+            http_task_id(task_id), after, limit
+        )
     except (OSError, ValueError) as exc:
-        raise HTTPException(status_code=409, detail="任务消息档案不可读，请检查本地历史文件") from exc
+        raise HTTPException(
+            status_code=409, detail="任务消息档案不可读，请检查本地历史文件"
+        ) from exc
 
 
 @router.post("/tasks/{task_id}/messages", response_model=UserMessage)
@@ -462,7 +466,9 @@ async def delete_task(task_id: str):
     messages = await redis_manager.load_task_messages(safe_task_id)
     if not messages:
         raise HTTPException(status_code=404, detail="历史任务不存在")
-    if _task_is_scheduled(safe_task_id) or redis_manager.task_status_from_messages(messages) in {
+    if _task_is_scheduled(safe_task_id) or redis_manager.task_status_from_messages(
+        messages
+    ) in {
         "running",
         "awaiting_approval",
     }:

@@ -14,7 +14,13 @@ from app.tools.base_interpreter import BaseCodeInterpreter
 
 # 论文骨架（顺序即章节顺序）
 _BACK_SECTIONS = ["sensitivity_analysis", "judge"]
-_FRONT_SECTIONS = ["firstPage", "RepeatQues", "analysisQues", "modelAssumption", "symbol"]
+_FRONT_SECTIONS = [
+    "firstPage",
+    "RepeatQues",
+    "analysisQues",
+    "modelAssumption",
+    "symbol",
+]
 
 
 def _question_keys_of(questions: dict) -> list[str]:

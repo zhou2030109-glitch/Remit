@@ -49,9 +49,7 @@ def build_pilot_coder_prompt(plan: PilotPlan) -> str:
 完成后读取该文件并打印内容自查。"""
 
 
-def validate_pilot_results(
-    work_dir: str | Path, plan: PilotPlan
-) -> dict[str, Any]:
+def validate_pilot_results(work_dir: str | Path, plan: PilotPlan) -> dict[str, Any]:
     """校验探索实验产物；每问至少一个真实跑通且指标有限的候选。
 
     Returns:
@@ -123,9 +121,7 @@ def validate_pilot_results(
                 runtime_seconds = math.nan
             notes = str(item.get("notes", ""))[:160]
             budget_seconds = plan.questions[key].time_budget_minutes * 60
-            if ran_ok and (
-                not math.isfinite(runtime_seconds) or runtime_seconds < 0
-            ):
+            if ran_ok and (not math.isfinite(runtime_seconds) or runtime_seconds < 0):
                 errors.append(
                     f"{key} 候选 {item.get('name', '?')} ran_ok=true "
                     "但 runtime_seconds 不是有效非负数"
@@ -133,9 +129,9 @@ def validate_pilot_results(
                 continue
             if ran_ok and runtime_seconds > budget_seconds:
                 ran_ok = False
-                notes = (
-                    f"超过 {budget_seconds} 秒硬预算，已按失败处理。" + notes
-                )[:160]
+                notes = (f"超过 {budget_seconds} 秒硬预算，已按失败处理。" + notes)[
+                    :160
+                ]
             if ran_ok:
                 ok_count += 1
             candidates.append(

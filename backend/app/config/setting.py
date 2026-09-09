@@ -216,5 +216,8 @@ def effective_api_timeout_seconds() -> float:
     """兼容旧配置，同时执行不可绕过的单请求超时上限。"""
     return max(
         1.0,
-        min(float(settings.API_TIMEOUT_SECONDS), float(settings.API_HARD_TIMEOUT_SECONDS)),
+        min(
+            float(settings.API_TIMEOUT_SECONDS),
+            float(settings.API_HARD_TIMEOUT_SECONDS),
+        ),
     )

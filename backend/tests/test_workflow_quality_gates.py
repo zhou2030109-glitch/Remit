@@ -184,9 +184,7 @@ class WorkflowQualityGateTests(unittest.TestCase):
                 "problem_type": "eda",
                 "selected_model": "not_applicable",
                 "candidate_models": [],
-                "robustness_checks": [
-                    {"name": "row reconciliation", "passed": True}
-                ],
+                "robustness_checks": [{"name": "row reconciliation", "passed": True}],
                 "artifacts": ["eda.xlsx"],
                 "paper_ready_images": [],
                 "type_specific": {
@@ -214,14 +212,10 @@ class WorkflowQualityGateTests(unittest.TestCase):
                 "problem_type": "eda",
                 "selected_model": "subject_balanced_eda",
                 "candidate_models": [],
-                "robustness_checks": [
-                    {"name": "quality sensitivity", "passed": True}
-                ],
+                "robustness_checks": [{"name": "quality sensitivity", "passed": True}],
                 "artifacts": ["eda.csv"],
                 "paper_ready_images": [],
-                "gate_failures": {
-                    "decision": "quality sensitivity exceeded threshold"
-                },
+                "gate_failures": {"decision": "quality sensitivity exceeded threshold"},
                 "type_specific": {
                     "raw_rows": 100,
                     "cleaned_rows": 100,
@@ -252,9 +246,7 @@ class WorkflowQualityGateTests(unittest.TestCase):
                 "problem_type": "sensitivity",
                 "selected_model": "evidence_audit",
                 "candidate_models": [],
-                "robustness_checks": [
-                    {"name": "scenario stability", "passed": True}
-                ],
+                "robustness_checks": [{"name": "scenario stability", "passed": True}],
                 "artifacts": ["result.csv"],
                 "paper_ready_images": [],
                 "type_specific": {
@@ -287,9 +279,7 @@ class WorkflowQualityGateTests(unittest.TestCase):
                 "problem_type": "sensitivity",
                 "selected_model": "evidence_audit",
                 "candidate_models": [],
-                "robustness_checks": [
-                    {"name": "scenario stability", "passed": True}
-                ],
+                "robustness_checks": [{"name": "scenario stability", "passed": True}],
                 "artifacts": ["result.csv"],
                 "paper_ready_images": [],
                 "type_specific": {
@@ -326,9 +316,7 @@ class WorkflowQualityGateTests(unittest.TestCase):
                 "problem_type": "sensitivity",
                 "selected_model": "evidence_audit",
                 "candidate_models": [],
-                "robustness_checks": [
-                    {"name": "scenario stability", "passed": True}
-                ],
+                "robustness_checks": [{"name": "scenario stability", "passed": True}],
                 "artifacts": ["result.csv"],
                 "paper_ready_images": [],
                 "type_specific": {
@@ -360,15 +348,11 @@ class WorkflowQualityGateTests(unittest.TestCase):
     def test_final_paper_requires_numbered_question_parent_heading(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            paper_text = (
-                "# 完整论文\n\n### 5.4.1 模型建立\n" + "有效建模证据。" * 2000
-            )
+            paper_text = "# 完整论文\n\n### 5.4.1 模型建立\n" + "有效建模证据。" * 2000
             sections = {"ques4": {"response_content": "内容", "footnotes": []}}
 
             with self.assertRaisesRegex(DeliverableValidationError, "5.4"):
-                validate_final_paper(
-                    root, sections, ["ques4"], paper_text=paper_text
-                )
+                validate_final_paper(root, sections, ["ques4"], paper_text=paper_text)
 
     def test_final_paper_rejects_writer_process_leakage(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -376,14 +360,13 @@ class WorkflowQualityGateTests(unittest.TestCase):
             paper_text = (
                 "# 完整论文\n\n## 5.4 问题四模型\n\n"
                 "先核对质量报告中的 selected_model，随后直接给出可替换正文。\n"
-                + "有效建模证据。" * 2000
+                + "有效建模证据。"
+                * 2000
             )
             sections = {"ques4": {"response_content": "内容", "footnotes": []}}
 
             with self.assertRaisesRegex(DeliverableValidationError, "写作过程话术"):
-                validate_final_paper(
-                    root, sections, ["ques4"], paper_text=paper_text
-                )
+                validate_final_paper(root, sections, ["ques4"], paper_text=paper_text)
 
 
 if __name__ == "__main__":

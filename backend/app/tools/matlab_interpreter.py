@@ -49,7 +49,10 @@ class MatlabCodeInterpreter(BaseCodeInterpreter):
         requested_timeout = timeout or settings.MATLAB_EXECUTION_TIMEOUT_SECONDS
         self.timeout = max(
             0.01,
-            min(float(requested_timeout), float(settings.CODE_EXECUTION_HARD_LIMIT_SECONDS)),
+            min(
+                float(requested_timeout),
+                float(settings.CODE_EXECUTION_HARD_LIMIT_SECONDS),
+            ),
         )
         self.calls_dir = self.work_path / "matlab_calls"
         self.metadata_path = self.work_path / "execution_backend.json"
@@ -276,9 +279,7 @@ class MatlabCodeInterpreter(BaseCodeInterpreter):
                 try:
                     await self.initialize()
                 except MatlabUnavailableError as exc:
-                    return await self._reject_execution(
-                        f"MATLAB 超时后重建失败: {exc}"
-                    )
+                    return await self._reject_execution(f"MATLAB 超时后重建失败: {exc}")
             if self.engine is None:
                 error = "MATLAB Engine 未初始化或已经关闭"
                 return error, True, error
@@ -325,13 +326,10 @@ class MatlabCodeInterpreter(BaseCodeInterpreter):
                 if self._is_timeout_error(exc):
                     timed_out = True
                     cancel_confirmed = self._cancel_active_future()
-                    exception_text = (
-                        f"MATLAB 代码执行超过 {self.timeout:g} 秒，"
-                        + (
-                            "已中断异步任务，Engine 将重建"
-                            if cancel_confirmed
-                            else "异步任务无法安全取消，Engine 已强制退出并将在下次调用重建"
-                        )
+                    exception_text = f"MATLAB 代码执行超过 {self.timeout:g} 秒，" + (
+                        "已中断异步任务，Engine 将重建"
+                        if cancel_confirmed
+                        else "异步任务无法安全取消，Engine 已强制退出并将在下次调用重建"
                     )
                 else:
                     exception_text = str(exc)

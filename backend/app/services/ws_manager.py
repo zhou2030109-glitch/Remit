@@ -26,7 +26,9 @@ class WebSocketManager:
     async def send_personal_message(self, message: str, websocket: WebSocket) -> None:
         await websocket.send_text(message)
 
-    async def send_personal_message_json(self, message: dict, websocket: WebSocket) -> None:
+    async def send_personal_message_json(
+        self, message: dict, websocket: WebSocket
+    ) -> None:
         await websocket.send_json(message)
 
     async def broadcast(self, message: str) -> None:

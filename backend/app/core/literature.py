@@ -280,9 +280,7 @@ def _converge_selected_papers(
             seen_titles.add(title)
             kept.append(paper)
 
-    kept_titles = {
-        str(paper.get("title", "")).strip().casefold() for paper in kept
-    }
+    kept_titles = {str(paper.get("title", "")).strip().casefold() for paper in kept}
     filtered_items = [
         {
             "title": str(paper.get("title", "")),

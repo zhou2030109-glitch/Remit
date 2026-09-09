@@ -17,12 +17,31 @@ from app.services.redis_manager import redis_manager
 _HTTP_TIMEOUT = (5, 30)
 
 _QUERY_STOPWORDS = {
-    "and", "based", "for", "from", "model", "models",
-    "of", "the", "using", "with",
+    "and",
+    "based",
+    "for",
+    "from",
+    "model",
+    "models",
+    "of",
+    "the",
+    "using",
+    "with",
 }
 _DOMAIN_ANCHORS = {
-    "congestion", "density", "eda", "flute", "grid", "hpwl",
-    "net", "placement", "routing", "rsmt", "steiner", "vlsi", "wirelength",
+    "congestion",
+    "density",
+    "eda",
+    "flute",
+    "grid",
+    "hpwl",
+    "net",
+    "placement",
+    "routing",
+    "rsmt",
+    "steiner",
+    "vlsi",
+    "wirelength",
 }
 _STRONG_ACRONYMS = {"flute", "hpwl", "rsmt", "vlsi"}
 
@@ -32,8 +51,7 @@ _OPENALEX_SELECT = (
     "open_access,best_oa_location,primary_location,locations"
 )
 _CROSSREF_SELECT = (
-    "DOI,title,author,published,is-referenced-by-count,abstract,"
-    "URL,container-title"
+    "DOI,title,author,published,is-referenced-by-count,abstract,URL,container-title"
 )
 
 

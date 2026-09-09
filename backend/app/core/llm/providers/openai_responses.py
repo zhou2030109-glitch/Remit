@@ -123,7 +123,9 @@ class OpenAIResponsesProvider(BaseProvider):
             elif role == "assistant" and "tool_calls" in msg:
                 items.extend(self._assistant_tool_calls(msg))
             else:
-                items.append({"role": role, "content": self._convert_content(msg, role)})
+                items.append(
+                    {"role": role, "content": self._convert_content(msg, role)}
+                )
         return items
 
     @staticmethod

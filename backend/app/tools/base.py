@@ -76,7 +76,9 @@ class BaseTool:
     def get_tools(self) -> list[dict[str, Any]]:
         """返回全部工具的 function-calling schema（带缓存）。"""
         if self._tools_cache is None:
-            self._tools_cache = [self._spec(method).wire_schema() for method in self._iter_registered()]
+            self._tools_cache = [
+                self._spec(method).wire_schema() for method in self._iter_registered()
+            ]
         return self._tools_cache
 
     def has_function(self, function_name: str) -> bool:

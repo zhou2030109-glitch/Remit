@@ -637,9 +637,7 @@ def _validate_quality_report(
             if not artifact.is_file() or artifact.stat().st_size == 0:
                 missing.append(str(item))
         if missing:
-            raise DeliverableValidationError(
-                f"产物不存在或为空: {', '.join(missing)}"
-            )
+            raise DeliverableValidationError(f"产物不存在或为空: {', '.join(missing)}")
 
     def check_images() -> None:
         images = report.get("paper_ready_images", [])
@@ -704,9 +702,7 @@ def _validate_quality_report(
         if not (manual_review and contract.problem_type in _PREDICTIVE_PROBLEM_TYPES):
             return
         reason = str(
-            report.get("gate_failure_reason")
-            or report.get("failure_reason")
-            or ""
+            report.get("gate_failure_reason") or report.get("failure_reason") or ""
         ).strip()
         if not reason:
             raise DeliverableValidationError(
@@ -803,9 +799,7 @@ def _validate_type_specific(
                 if not isinstance(values.get(field), bool)
             ]
             if invalid:
-                raise DeliverableValidationError(
-                    f"{', '.join(invalid)} 必须是布尔值"
-                )
+                raise DeliverableValidationError(f"{', '.join(invalid)} 必须是布尔值")
 
         def check_pass_condition() -> None:
             fields = (
@@ -863,9 +857,7 @@ def _validate_type_specific(
         def check_parameters() -> None:
             if (
                 int(
-                    _finite_number(
-                        values.get("parameters_tested"), "parameters_tested"
-                    )
+                    _finite_number(values.get("parameters_tested"), "parameters_tested")
                 )
                 < 1
             ):
@@ -889,24 +881,17 @@ def _validate_type_specific(
                         f"第 {index} 条敏感性结论证据必须是 JSON 对象"
                     )
                 if not str(item.get("conclusion", "")).strip():
-                    raise DeliverableValidationError(
-                        f"第 {index} 条敏感性结论不能为空"
-                    )
+                    raise DeliverableValidationError(f"第 {index} 条敏感性结论不能为空")
                 evidence_files = item.get("artifacts")
                 if not isinstance(evidence_files, list) or not evidence_files:
                     raise DeliverableValidationError(
                         f"第 {index} 条敏感性结论至少需要一个证据产物"
                     )
                 if root is None:
-                    raise DeliverableValidationError(
-                        "无法定位敏感性结论的证据根目录"
-                    )
+                    raise DeliverableValidationError("无法定位敏感性结论的证据根目录")
                 for evidence_file in evidence_files:
                     evidence_path = _resolve_artifact(root, str(evidence_file))
-                    if (
-                        not evidence_path.is_file()
-                        or evidence_path.stat().st_size == 0
-                    ):
+                    if not evidence_path.is_file() or evidence_path.stat().st_size == 0:
                         raise DeliverableValidationError(
                             f"敏感性结论证据不存在或为空: {evidence_file}"
                         )
@@ -930,9 +915,7 @@ def _validate_type_specific(
                     "objective.higher_is_better 必须是布尔值"
                 )
             improvement = _relative_improvement(model, baseline, higher)
-            baseline_retained = (
-                values.get("selection_decision") == "baseline_retained"
-            )
+            baseline_retained = values.get("selection_decision") == "baseline_retained"
             if improvement < 0.01 and not baseline_retained:
                 raise ModelQualityValidationError("优化方案未比可行基线改善至少1%")
             if baseline_retained:
@@ -1013,14 +996,17 @@ def _validate_type_specific(
             scenario_count = (
                 len(sensitivity_scenarios)
                 if isinstance(sensitivity_scenarios, list)
-                else int(
-                    _finite_number(sensitivity_scenarios, "sensitivity_scenarios")
-                )
+                else int(_finite_number(sensitivity_scenarios, "sensitivity_scenarios"))
             )
             if scenario_count < 3:
                 raise DeliverableValidationError("优化问题至少需要3个敏感性场景")
 
-        checks = [check_objective, check_feasible, check_constraints, check_opt_scenarios]
+        checks = [
+            check_objective,
+            check_feasible,
+            check_constraints,
+            check_opt_scenarios,
+        ]
     elif problem_type == "evaluation":
 
         def check_rank_stability() -> None:
@@ -1210,16 +1196,12 @@ def _assert_reported_metric(reported: float, calculated: float, label: str) -> N
 
 def _documents_grouped_validation(metrics: dict[str, Any]) -> bool:
     """Return whether metrics document how independent units enter folds."""
-    strategy = re.sub(
-        r"\s+", "", str(metrics.get("validation_strategy", "")).lower()
-    )
+    strategy = re.sub(r"\s+", "", str(metrics.get("validation_strategy", "")).lower())
     has_fold_language = any(
-        term in strategy
-        for term in ("fold", "交叉验证", "验证折", "时间折", "外折")
+        term in strategy for term in ("fold", "交叉验证", "验证折", "时间折", "外折")
     ) or bool(re.search(r"(?:\d+|[一二三四五六七八九十]+)个?折", strategy))
     has_group_language = any(
-        term in strategy
-        for term in ("group", "分组", "主体", "独立单位", "预测起点")
+        term in strategy for term in ("group", "分组", "主体", "独立单位", "预测起点")
     )
     grouping_key = metrics.get("grouping_key")
     has_structured_grouping = (
@@ -1355,9 +1337,7 @@ def validate_question_deliverables(
             paper_ready_images=images,
             manual_review_required=manual_review,
             manual_review_reason=(
-                _manual_review_reason(quality_report)
-                if manual_review
-                else None
+                _manual_review_reason(quality_report) if manual_review else None
             ),
         )
     rows, name, model, baseline = 0, None, None, None
@@ -1379,9 +1359,7 @@ def validate_question_deliverables(
         paper_ready_images=images,
         manual_review_required=manual_review,
         manual_review_reason=(
-            _manual_review_reason(quality_report)
-            if manual_review
-            else None
+            _manual_review_reason(quality_report) if manual_review else None
         ),
     )
 
@@ -1399,14 +1377,16 @@ def _manual_review_reason(quality_report: dict[str, Any]) -> str:
         if joined:
             return joined
     type_specific = quality_report.get("type_specific")
-    if isinstance(type_specific, dict) and str(
-        type_specific.get("gate_failure_reason", "")
-    ).strip():
+    if (
+        isinstance(type_specific, dict)
+        and str(type_specific.get("gate_failure_reason", "")).strip()
+    ):
         return str(type_specific["gate_failure_reason"]).strip()
     gate_failures = quality_report.get("gate_failures")
-    if isinstance(gate_failures, dict) and str(
-        gate_failures.get("decision", "")
-    ).strip():
+    if (
+        isinstance(gate_failures, dict)
+        and str(gate_failures.get("decision", "")).strip()
+    ):
         return str(gate_failures["decision"]).strip()
     return "质量报告要求人工复核"
 
@@ -1532,7 +1512,19 @@ _METRIC_KEYWORD_PATTERN = re.compile(
 _NUMBER_PATTERN = re.compile(r"(?<![\d.])-?\d+(?:\.\d+)?")
 # 显著性水平、常见比例等惯用常数不参与溯源，避免误杀
 _GROUNDING_COMMON_CONSTANTS = {
-    0.0, 0.01, 0.05, 0.1, 0.5, 0.9, 0.95, 0.99, 1.0, 5.0, 10.0, 95.0, 100.0,
+    0.0,
+    0.01,
+    0.05,
+    0.1,
+    0.5,
+    0.9,
+    0.95,
+    0.99,
+    1.0,
+    5.0,
+    10.0,
+    95.0,
+    100.0,
 }
 
 
@@ -1717,11 +1709,7 @@ def validate_writer_section(
         for number_match in _NUMBER_PATTERN.finditer(content):
             start = number_match.start()
             keyword = next(
-                (
-                    text
-                    for end, text in keyword_spans
-                    if 0 <= start - end <= 40
-                ),
+                (text for end, text in keyword_spans if 0 <= start - end <= 40),
                 None,
             )
             if keyword is None:
@@ -1752,9 +1740,7 @@ def validate_writer_section(
         if section_key != "firstPage" or expected_question_count <= 0:
             return
         problems: list[str] = []
-        if not any(
-            token in content for token in ("关键词", "Keywords", "keywords")
-        ):
+        if not any(token in content for token in ("关键词", "Keywords", "keywords")):
             problems.append("缺少关键词部分")
         cn_numbers = ["一", "二", "三", "四", "五", "六", "七", "八"]
         for index in range(1, expected_question_count + 1):
@@ -1764,9 +1750,7 @@ def validate_writer_section(
             if not any(token in content for token in tokens):
                 problems.append(f"摘要必须逐问覆盖：缺少针对问题{index}的内容")
         # 剔除"问题N/Problem N"标签本身的数字，否则计数被标签自我满足
-        stripped = re.sub(
-            r"(?:问题|Problem\s*|Question\s*)\d+", "", content
-        )
+        stripped = re.sub(r"(?:问题|Problem\s*|Question\s*)\d+", "", content)
         digits = _NUMBER_PATTERN.findall(stripped)
         if len(digits) < expected_question_count:
             problems.append("摘要必须给出各问的核心求解数值")
@@ -1832,9 +1816,7 @@ def validate_final_paper(
         question_number = _question_number(section_key)
         if question_number is None:
             continue
-        heading_pattern = re.compile(
-            rf"(?m)^##\s+5\.{question_number}(?:\s|$)"
-        )
+        heading_pattern = re.compile(rf"(?m)^##\s+5\.{question_number}(?:\s|$)")
         if not heading_pattern.search(text):
             raise DeliverableValidationError(
                 f"最终论文缺少问题{question_number}的 5.{question_number} 主标题"

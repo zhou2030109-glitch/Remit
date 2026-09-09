@@ -103,9 +103,7 @@ async def judge_paper(
             raw_score = scores.get(key)
             if isinstance(raw_score, (int, float, str)):
                 try:
-                    normalized_scores[key] = max(
-                        1.0, min(10.0, float(raw_score))
-                    )
+                    normalized_scores[key] = max(1.0, min(10.0, float(raw_score)))
                 except (TypeError, ValueError):
                     normalized_scores[key] = 0.0
             else:
@@ -159,6 +157,4 @@ def save_review(work_dir: str, review: dict[str, Any]) -> None:
     from pathlib import Path
 
     path = Path(work_dir) / "paper_review.json"
-    path.write_text(
-        json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    path.write_text(json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8")
