@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:20-alpine AS frontend
+FROM node:24-alpine AS frontend
 WORKDIR /build/frontend
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN npm install -g pnpm@10.6.3
@@ -8,7 +8,7 @@ COPY frontend/ ./
 RUN pnpm run build
 
 FROM python:3.12-slim AS runtime
-COPY --from=ghcr.io/astral-sh/uv:0.11.28 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /uvx /bin/
 # 科学计算需要 OpenMP；论文导出需要 XeLaTeX 与中文字体。
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 fonts-noto-cjk fonts-texgyre \
@@ -35,5 +35,5 @@ LABEL org.opencontainers.image.title="Remit" \
     org.opencontainers.image.revision=$SOURCE_REVISION
 EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=4 \
-    CMD python -c "import json,urllib.request; s=json.load(urllib.request.urlopen('http://127.0.0.1:8000/status',timeout=3)); assert s['redis']['status']=='running'"
+    CMD python -c "import json,urllib.request; s=json.load(urllib.request.urlopen('http://127.0.0.1:8000/status',timeout=3)); raise SystemExit(0 if s['redis']['status']=='running' else 1)"
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--ws-ping-interval", "60", "--ws-ping-timeout", "120"]

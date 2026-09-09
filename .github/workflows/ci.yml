@@ -22,33 +22,47 @@ jobs:
             venv-python: "backend\\.venv\\Scripts\\python.exe"
           - os: macos-latest
             venv-python: "backend/.venv/bin/python"
+          - os: ubuntu-latest
+            venv-python: "backend/.venv/bin/python"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
-          python-version: "3.12"
-          cache: pip
-      - uses: pnpm/action-setup@v6
+          python-version-file: backend/.python-version
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
         with:
           version: 10.6.3
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: "20"
+          node-version-file: frontend/.node-version
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install uv
-        run: python -m pip install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.12.10"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
       - name: Install backend dependencies
         working-directory: backend
         run: uv sync --frozen
       - name: Lint backend
         working-directory: backend
         run: uv run ruff check app tests
-      - name: Install Redis for POSIX launcher check
+      - name: Check backend formatting
+        working-directory: backend
+        run: uv run ruff format --check app tests
+      - name: Check backend dependency consistency
+        working-directory: backend
+        run: uv pip check
+      - name: Install Redis for macOS launcher check
         if: runner.os == 'macOS'
         run: brew install redis
+      - name: Install Redis for Linux launcher check
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y redis-server
       - name: Test backend
         working-directory: backend
         run: uv run pytest tests -q
@@ -71,25 +85,50 @@ jobs:
           BACKEND_RESULT: ${{ needs.backend-and-launchers.result }}
         run: test "$BACKEND_RESULT" = success
 
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Lint GitHub Actions workflows
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9
+      - name: Validate Compose files
+        run: |
+          cp backend/.env.example backend/.env.dev
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.release.yml config --quiet
+      - name: Build production image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
         with:
           version: 10.6.3
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: "20"
+          node-version-file: frontend/.node-version
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install frontend dependencies
         working-directory: frontend
         run: pnpm install --frozen-lockfile
-      - name: Lint frontend
+      - name: Check frontend formatting and lint
         working-directory: frontend
-        run: pnpm run lint
+        run: pnpm run check
+      - name: Typecheck frontend
+        working-directory: frontend
+        run: pnpm run typecheck
       - name: Test frontend behavior
         working-directory: frontend
         run: pnpm run test

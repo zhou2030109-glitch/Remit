@@ -112,7 +112,7 @@ frontend/
 
 ### 运行环境
 
-- Python 3.12+，包管理用 uv（非 pip）
-- Node.js + pnpm
+- Python 3.12（见 `backend/.python-version`），包管理用 uv（非 pip）
+- Node.js 24（见 `frontend/.node-version`）+ pnpm 10.6.3
 - Redis 必须运行（任务队列和 WebSocket 广播）
 - 后端虚拟环境路径：`backend/.venv/`

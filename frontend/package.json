@@ -14,6 +14,7 @@
     "lint": "biome lint src tests",
     "check": "biome check src tests",
     "test": "vitest run",
+    "typecheck": "vue-tsc -b",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview"
   },
@@ -35,7 +36,7 @@
     "@biomejs/biome": "1.9.4",
     "@types/katex": "^0.16.8",
     "@types/marked": "^6.0.0",
-    "@types/node": "^22.20.1",
+    "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "^5.2.4",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.9.1",
@@ -51,5 +52,9 @@
     "vitest": "^3.2.4",
     "vue-tsc": "^2.2.12"
   },
-  "packageManager": "pnpm@10.6.3"
+  "packageManager": "pnpm@10.6.3",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=10.6.3 <11"
+  }
 }

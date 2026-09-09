@@ -42,8 +42,8 @@ workflow details.
 
 - Windows 10/11 for the desktop launcher, macOS 12+ or Linux via the shell
   launcher, or a Docker Compose environment;
-- Python 3.12+ and [uv](https://docs.astral.sh/uv/);
-- Node.js 20+ and pnpm 10;
+- Python 3.12 (see `backend/.python-version`) and [uv](https://docs.astral.sh/uv/);
+- Node.js 24 (see `frontend/.node-version`) and pnpm 10.6.3;
 - Redis for the complete workflow. Windows source mode can use the bundled
   Redis runtime files. On macOS use `brew install redis`; on Linux use the
   distribution package manager. The launcher starts a dedicated instance on
@@ -140,10 +140,13 @@ problem and data through the UI.
 ```bash
 cd backend
 uv run ruff check app tests
+uv run ruff format --check app tests
 uv run pytest tests -q
 
 cd ../frontend
-pnpm run lint
+pnpm run check
+pnpm run typecheck
+pnpm run test
 pnpm run build
 
 cd ..
