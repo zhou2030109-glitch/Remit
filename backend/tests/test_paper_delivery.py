@@ -17,6 +17,9 @@ from app.schemas.enums import CompTemplate
 from app.utils.paper_polish import render_paper_deliverables
 
 
+FONT_PATH = Path(__file__).resolve().parents[1] / "fonts" / "simhei.ttf"
+
+
 class PaperDeliveryTests(unittest.TestCase):
     def test_structured_save_does_not_emit_markdown_final(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -72,26 +75,30 @@ class PaperDeliveryTests(unittest.TestCase):
         self.assertEqual(audit.status, "pass")
         self.assertEqual(audit.metrics["template_phrase_hits"], {})
 
-    @unittest.skipUnless(shutil.which("xelatex"), "requires XeLaTeX")
+    @unittest.skipUnless(
+        shutil.which("xelatex") and FONT_PATH.is_file(),
+        "requires XeLaTeX and the local SimHei font",
+    )
     def test_latex_source_compiles_to_the_pdf_we_deliver(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            font_source = Path(__file__).resolve().parents[1] / "fonts" / "simhei.ttf"
-            shutil.copy2(font_source, root / "simhei.ttf")
-            markdown = """# 交付编译测试
+            shutil.copy2(FONT_PATH, root / "simhei.ttf")
+            markdown = (
+                """# 交付编译测试
 
 本文用同一份 LaTeX 源码生成 PDF。测试值为 12.4，单位为秒。
 
-""" + ("该段用于检查中文字体、分页和文本提取，观测值保持为 12.4。\n\n" * 80) + """
+"""
+                + ("该段用于检查中文字体、分页和文本提取，观测值保持为 12.4。\n\n" * 80)
+                + """
 
 | 指标 | 数值 |
 | --- | ---: |
 | RMSE | 12.4 |
 """
+            )
             with patch.object(settings, "PAPER_MIN_PDF_PAGES", 1):
-                delivery = render_paper_deliverables(
-                    markdown, root, CompTemplate.CHINA
-                )
+                delivery = render_paper_deliverables(markdown, root, CompTemplate.CHINA)
 
             self.assertTrue(delivery.tex_path.is_file())
             self.assertTrue(delivery.pdf_path.is_file())
