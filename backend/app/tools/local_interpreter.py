@@ -250,7 +250,8 @@ class LocalCodeInterpreter(BaseCodeInterpreter):
 
     def _run_raw(self, code: str) -> list[tuple[str, str]]:
         """把代码发给内核，收割 iopub 消息并归类为 ``(标记, 内容)``。"""
-        assert self.kc is not None and self.km is not None
+        if self.kc is None or self.km is None:
+            raise RuntimeError("Jupyter kernel client is not initialized")
         kc, km = self.kc, self.km
         kc.execute(code)
         collected: list[tuple[str, str]] = []

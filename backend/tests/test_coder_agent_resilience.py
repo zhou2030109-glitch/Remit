@@ -74,6 +74,13 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertGreater(with_code, small + 500)
 
+    def test_missing_interpreter_raises_explicit_runtime_error(self) -> None:
+        agent = _make_agent()
+        agent.code_interpreter = None
+
+        with self.assertRaisesRegex(RuntimeError, "not initialized"):
+            agent._require_interpreter()
+
     async def test_transport_failure_is_not_returned_as_completed_code(self) -> None:
         agent = _make_agent(max_retries=2)
         agent._chat = AsyncMock(side_effect=ConnectionError("provider offline"))
