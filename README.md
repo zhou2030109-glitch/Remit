@@ -1,6 +1,6 @@
 <div align="center">
   <img src="./assets/remit-icon.png" alt="Remit 标志" width="140" />
-  <h1>Remit 2.0 — 数模 Agent · 数学建模 AI 助手</h1>
+  <h1>Remit 2.0 — 数模 Agent</h1>
   <p><strong>本地优先、可检查、可恢复的数学建模工作台</strong></p>
   <p>让 Agent 像一支数模队伍一样协作，让人始终握着题意、选型和交付的决定权。</p>
   <p>
