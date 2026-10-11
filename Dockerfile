@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24-alpine AS frontend
+FROM node:26-alpine AS frontend
 WORKDIR /build/frontend
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN npm install -g pnpm@10.6.3
@@ -7,7 +7,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --froze
 COPY frontend/ ./
 RUN pnpm run build
 
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /uvx /bin/
 # 科学计算需要 OpenMP；论文导出需要 XeLaTeX 与中文字体。
 RUN apt-get update && apt-get install -y --no-install-recommends \
