@@ -7,8 +7,6 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
-$RedisDirectory = Join-Path $Root "tools\redis"
-$RedisExecutable = Join-Path $RedisDirectory "redis-server.exe"
 $BackendDirectory = Join-Path $Root "backend"
 $BackendPython = Join-Path $BackendDirectory ".venv\Scripts\python.exe"
 if (-not (Test-Path -LiteralPath $BackendPython -PathType Leaf)) {
@@ -16,14 +14,10 @@ if (-not (Test-Path -LiteralPath $BackendPython -PathType Leaf)) {
 }
 $FrontendDirectory = Join-Path $Root "frontend"
 $LogDirectory = Join-Path $Root "logs"
-$RedisPort = 16379
 $BackendPort = 18000
 $FrontendPort = 15173
 
 function Assert-LauncherDependencies {
-    if (-not (Test-Path -LiteralPath $RedisExecutable -PathType Leaf)) {
-        throw "Redis executable not found: $RedisExecutable"
-    }
     if (-not (Test-Path -LiteralPath $BackendPython -PathType Leaf)) {
         throw "Backend virtual environment not found. Run: cd backend; uv sync"
     }
@@ -190,24 +184,9 @@ $ListeningPorts = @(
 )
 
 Write-Host "=============================================="
-Write-Host " Remit: Redis + FastAPI + Vue"
+Write-Host " Remit: FastAPI + Vue"
 Write-Host " Mode: $(if ($Visible) { 'visible terminals' } else { 'hidden background services' })"
 Write-Host "=============================================="
-
-$appendOnly = if ((Test-Path -LiteralPath (Join-Path $RedisDirectory "appendonlydir\appendonly.aof.manifest")) -or
-    (Test-Path -LiteralPath (Join-Path $RedisDirectory "appendonly.aof"))) { "yes" } else { "no" }
-
-Start-ProjectService `
-    -Name "redis" `
-    -Port $RedisPort `
-    -FilePath $RedisExecutable `
-    -ArgumentList @("--port", "$RedisPort", "--bind", "127.0.0.1", "::1", "--appendonly", $appendOnly, "--appendfsync", "everysec") `
-    -WorkingDirectory $RedisDirectory
-
-& $BackendPython (Join-Path $PSScriptRoot "redis_lifecycle.py") prepare --port $RedisPort
-if ($LASTEXITCODE -ne 0) {
-    throw "Redis persistence initialization failed. See logs\redis.out.log."
-}
 
 Start-ProjectService `
     -Name "backend" `

@@ -19,7 +19,7 @@ from app.schemas.request import Problem
 from app.services import team_state as team
 from app.services.call_ledger import scope as call_scope
 from app.services.conversation_errors import explain as explain_conversation_error
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 
 router = APIRouter(prefix="/api/team", tags=["team"])
 _workers: dict[tuple[str, str], asyncio.Task] = {}
@@ -156,7 +156,7 @@ async def import_history(task_id: str, root: Path) -> None:
             "SELECT 1 FROM events WHERE event_key='archive-imported'"
         ).fetchone():
             return
-    messages = await redis_manager.load_task_messages(task_id)
+    messages = await task_bus.load_task_messages(task_id)
     for message in messages:
         await asyncio.to_thread(team.record_message, task_id, message)
     await asyncio.to_thread(
@@ -675,7 +675,7 @@ async def execute_plan(
         await asyncio.to_thread(
             team.directive, root, plan.role, instruction, body.request_id
         )
-        await redis_manager.clear_cancellation_request(task_id)
+        await task_bus.clear_cancellation_request(task_id)
         modeling_router._auto_resume_counts.pop(task_id, None)
         modeling_router._scheduled_tasks.add(task_id)
         background.add_task(

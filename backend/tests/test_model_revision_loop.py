@@ -491,7 +491,7 @@ class WorkflowModelRevisionTests(unittest.IsolatedAsyncioTestCase):
                 ),
                 patch("app.core.workflow_solution.validate_writer_section"),
                 patch(
-                    "app.core.workflow.redis_manager.publish_message",
+                    "app.core.workflow.task_bus.publish_message",
                     new=AsyncMock(),
                 ),
             ):
@@ -635,7 +635,7 @@ class WorkflowModelRevisionTests(unittest.IsolatedAsyncioTestCase):
                 ),
                 patch("app.core.workflow_solution.validate_writer_section"),
                 patch(
-                    "app.core.workflow.redis_manager.publish_message",
+                    "app.core.workflow.task_bus.publish_message",
                     new=AsyncMock(),
                 ),
             ):
@@ -764,7 +764,7 @@ class WorkflowModelRevisionTests(unittest.IsolatedAsyncioTestCase):
                 ),
                 patch("app.core.workflow_solution.validate_writer_section"),
                 patch(
-                    "app.core.workflow.redis_manager.publish_message",
+                    "app.core.workflow.task_bus.publish_message",
                     new=AsyncMock(),
                 ),
             ):
@@ -911,7 +911,7 @@ class WorkflowModelRevisionTests(unittest.IsolatedAsyncioTestCase):
                 ),
                 patch("app.core.workflow_solution.validate_writer_section"),
                 patch(
-                    "app.core.workflow.redis_manager.publish_message",
+                    "app.core.workflow.task_bus.publish_message",
                     new=publish,
                 ),
             ):

@@ -33,7 +33,7 @@ from app.schemas.A2A import (
     ModelExecutionReview,
     WriterResponse,
 )
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 
 
 def _build_manual_execution_review(
@@ -180,7 +180,7 @@ class SolutionNodeMixin:
         node_id = f"solve:{key}"
         await self._start_node(state, node_id)
         await self._check_cancelled()
-        await redis_manager.notify(self.task_id, f"代码手开始求解{key}")
+        await task_bus.notify(self.task_id, f"代码手开始求解{key}")
 
         code_files_before = snapshot_code_files(self.work_dir)
         run = await self._prepare_solution_run(key, node_id, value, state)
@@ -274,7 +274,7 @@ class SolutionNodeMixin:
                     "本轮明确要求返修，已有报告仍需人工复核；保留证据并落实修改意见，不能直接复用旧结论。"
                 )
             run.recovered_gate_report = recovered_report
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id,
                 f"检测到 {run.key} 已有完整"
                 + (
@@ -453,7 +453,7 @@ class SolutionNodeMixin:
                     ),
                     revision_plan=revision_plan,
                 )
-                await redis_manager.notify(
+                await task_bus.notify(
                     self.task_id,
                     f"建模手复核 {run.key} 后认为仍可改进，已改用 "
                     f"{revision_plan.selected_model} 重新运行 ({gate_attempt + 1}/3)",
@@ -532,7 +532,7 @@ class SolutionNodeMixin:
         key, contract = run.key, run.contract
         if gate_attempt >= 3:
             # 三连败不再作废任务：保留全部产物，挂起等待人工裁决。
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id,
                 f"{key} 连续 3 次未通过交付质量门禁，任务已挂起等待人工处理：{error}",
                 "error",
@@ -562,7 +562,7 @@ class SolutionNodeMixin:
                 },
             )
         if not isinstance(error, ModelQualityValidationError):
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id,
                 f"{key} 产物或验证格式未通过，代码手自动返修 ({gate_attempt}/3): {error}",
                 "warning",
@@ -592,7 +592,7 @@ class SolutionNodeMixin:
         )
         if failed_model and failed_model not in rejected_models:
             rejected_models.append(failed_model)
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id,
             f"{key} 样本外性能、可行性或稳定性未达标，"
             f"已退回建模手更换模型 ({gate_attempt}/3): {error}",
@@ -620,7 +620,7 @@ class SolutionNodeMixin:
             failed_model=failed_model,
             revision_plan=revision_plan,
         )
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id,
             f"建模手已切换为 {revision_plan.selected_model}，"
             f"代码手将按原门槛重新运行并验证 {key}",
@@ -727,7 +727,7 @@ class SolutionNodeMixin:
         """发布执行摘要，交付写作（或写作素材），并提交人工审核。"""
         key, node_id = run.key, run.node_id
         review = outcome.execution_review
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id,
             f"{key} 代码结果已通过质量门禁和建模手复核"
             if review.verdict == "accept"
@@ -758,7 +758,7 @@ class SolutionNodeMixin:
             paper_ready_images=paper_images,
             files_before=code_files_before,
         )
-        await redis_manager.publish_message(self.task_id, execution_summary)
+        await task_bus.publish_message(self.task_id, execution_summary)
         writer_prompt = flows.get_writer_prompt(
             key,
             outcome.coder_response.code_response or "",
@@ -790,7 +790,7 @@ class SolutionNodeMixin:
             state.setdefault("solution_results", {})[key] = result
             await self._complete_node(state, node_id)
         else:
-            await redis_manager.notify(self.task_id, f"论文手开始写{key}部分")
+            await task_bus.notify(self.task_id, f"论文手开始写{key}部分")
             writer_response = await self._write_solution_section(
                 run, state, outcome, writer_agent, writer_prompt, paper_images
             )
@@ -798,7 +798,7 @@ class SolutionNodeMixin:
             result["writer_response"] = writer_response.model_dump(mode="json")
             state.setdefault("solution_results", {})[key] = result
             await self._complete_node(state, node_id)
-            await redis_manager.notify(self.task_id, f"论文手完成{key}部分")
+            await task_bus.notify(self.task_id, f"论文手完成{key}部分")
         node_label = self.checkpoint.node_label(node_id, state)
         manual = review.verdict == "manual_review"
         await self._require_human_approval(
@@ -867,7 +867,7 @@ class SolutionNodeMixin:
             except DeliverableValidationError as error:
                 if writer_attempt >= 2:
                     # 与结构章节一致：写作失败挂起等人，不作废已通过门禁的计算
-                    await redis_manager.notify(
+                    await task_bus.notify(
                         self.task_id,
                         f"{key} 论文段落连续 2 次未通过门禁，任务已挂起等待人工处理：{error}",
                         "error",
@@ -883,7 +883,7 @@ class SolutionNodeMixin:
                         ),
                         allow_incomplete=True,
                     )
-                await redis_manager.notify(
+                await task_bus.notify(
                     self.task_id,
                     f"{key} 论文段落未通过门禁，写作手返修: {error}",
                     "warning",

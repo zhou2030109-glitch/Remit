@@ -106,7 +106,7 @@ class LocalExecutionWatchdogTests(unittest.IsolatedAsyncioTestCase):
 
             with (
                 patch(
-                    "app.tools.local_interpreter.redis_manager.publish_message",
+                    "app.tools.local_interpreter.task_bus.publish_message",
                     new=AsyncMock(),
                 ),
                 patch(

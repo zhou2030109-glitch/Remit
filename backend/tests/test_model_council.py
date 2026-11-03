@@ -17,7 +17,7 @@ from app.schemas.A2A import (
     ModelScoutProposal,
     ModelerToCoder,
 )
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 
 
 class _FakeAsyncClient:
@@ -266,12 +266,12 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
             }
         )
 
-        original_publish = redis_manager.publish_message
+        original_publish = task_bus.publish_message
 
         async def noop(*args, **kwargs):
             return None
 
-        redis_manager.publish_message = noop
+        task_bus.publish_message = noop
         try:
             review, _ = await council.review(
                 coordinator=coordinator,
@@ -279,7 +279,7 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
                 scout=scout,
             )
         finally:
-            redis_manager.publish_message = original_publish
+            task_bus.publish_message = original_publish
 
         self.assertEqual(set(review.question_reviews), {"ques1", "ques2"})
         self.assertEqual(len(critic.payloads), 1)
@@ -331,12 +331,12 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
             }
         )
 
-        original_publish = redis_manager.publish_message
+        original_publish = task_bus.publish_message
 
         async def noop(*args, **kwargs):
             return None
 
-        redis_manager.publish_message = noop
+        task_bus.publish_message = noop
         try:
             review, _ = await council.review(
                 coordinator=coordinator,
@@ -344,7 +344,7 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
                 scout=scout,
             )
         finally:
-            redis_manager.publish_message = original_publish
+            task_bus.publish_message = original_publish
 
         self.assertIn("ques1", review.question_reviews)
         self.assertEqual(council.fallback_reasons["ques1"], "安全策略拒绝")
@@ -371,7 +371,7 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
             critic_llm=_RefusingCritic(delay=1),  # type: ignore[arg-type]
         )
         timeout_council.critic_timeout_seconds = 0.01
-        redis_manager.publish_message = noop
+        task_bus.publish_message = noop
         try:
             timeout_review, _ = await timeout_council.review(
                 coordinator=coordinator,
@@ -379,7 +379,7 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
                 scout=scout,
             )
         finally:
-            redis_manager.publish_message = original_publish
+            task_bus.publish_message = original_publish
 
         self.assertIn("ques1", timeout_review.question_reviews)
         self.assertEqual(
@@ -401,7 +401,7 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
             critic_llm=_RefusingCritic(),  # type: ignore[arg-type]
         )
         double_timeout_council.fallback_timeout_seconds = 0.01
-        redis_manager.publish_message = noop
+        task_bus.publish_message = noop
         try:
             degraded_review, _ = await double_timeout_council.review(
                 coordinator=coordinator,
@@ -409,7 +409,7 @@ class ModelCouncilReviewRegressionTests(unittest.IsolatedAsyncioTestCase):
                 scout=scout,
             )
         finally:
-            redis_manager.publish_message = original_publish
+            task_bus.publish_message = original_publish
 
         self.assertIn("ques1", degraded_review.question_reviews)
         self.assertIn(

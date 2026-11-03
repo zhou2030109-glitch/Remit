@@ -94,7 +94,7 @@ class ProductionLauncherTests(unittest.TestCase):
             patch.object(
                 launcher,
                 "check_installation",
-                return_value="PACKAGED_APP_CHECK_FAIL: Redis",
+                return_value="PACKAGED_APP_CHECK_FAIL: 字体",
             ),
             patch.object(launcher, "_acquire_single_instance") as acquire,
         ):
@@ -221,7 +221,6 @@ class ProductionLauncherTests(unittest.TestCase):
             patch.object(launcher, "configure_logging"),
             patch.object(launcher, "_record_application_owner"),
             patch.object(launcher, "_clear_application_owner"),
-            patch.object(launcher, "ensure_redis_running"),
             patch.object(launcher, "prepare_jupyter_kernelspec"),
             patch.object(launcher, "ensure_backend_running"),
             patch.object(launcher, "wait_until_ready", return_value=True),
@@ -253,10 +252,11 @@ class ProductionLauncherTests(unittest.TestCase):
             patch.object(launcher, "configure_logging"),
             patch.object(launcher, "_record_application_owner"),
             patch.object(launcher, "_clear_application_owner"),
+            patch.object(launcher, "prepare_jupyter_kernelspec"),
             patch.object(
                 launcher,
-                "ensure_redis_running",
-                side_effect=RuntimeError("redis failed"),
+                "ensure_backend_running",
+                side_effect=RuntimeError("backend failed"),
             ),
             patch.object(launcher, "stop_services"),
             patch.object(launcher, "show_startup_error", create=True) as show_error,
@@ -265,7 +265,7 @@ class ProductionLauncherTests(unittest.TestCase):
 
         self.assertEqual(result, 1)
         show_error.assert_called_once()
-        self.assertIn("redis failed", show_error.call_args.args[0])
+        self.assertIn("backend failed", show_error.call_args.args[0])
 
 
 if __name__ == "__main__":

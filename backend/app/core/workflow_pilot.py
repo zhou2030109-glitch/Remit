@@ -37,7 +37,7 @@ from app.schemas.A2A import (
     ModelerToCoder,
     PilotPlan,
 )
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.utils.log_util import logger
 
 
@@ -190,7 +190,7 @@ class PilotNodeMixin:
         state.setdefault("node_outcomes", {}).pop("pilot", None)
         await self._start_node(state, node_id)
         await self._check_cancelled()
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id, "开始核对探索实验范围；适用时再执行小样本候选比较"
         )
         revision_feedback = self.checkpoint.consume_revision_feedback(state, node_id)
@@ -265,9 +265,7 @@ class PilotNodeMixin:
                     "summary": "未运行候选比较；按已批准方案继续正式计算与验证",
                 }
                 await self._complete_node(state, node_id)
-                await redis_manager.notify(
-                    self.task_id, state["pilot_skipped"], "warning"
-                )
+                await task_bus.notify(self.task_id, state["pilot_skipped"], "warning")
                 return
             expected_keys = {
                 key for key in self.questions if re.fullmatch(r"ques\d+", key)
@@ -314,7 +312,7 @@ class PilotNodeMixin:
                 raise
             # 探索实验是增强环节：失败降级按原方案继续，绝不阻塞主流程
             logger.error(f"探索实验降级跳过: {exc}")
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id,
                 f"探索实验未能完成，已降级跳过，按原方案继续求解：{exc}",
                 "warning",
@@ -369,7 +367,7 @@ class PilotNodeMixin:
             if judged_count
             else ""
         )
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id,
             f"探索实验完成，已按真实数据定案：{selected_lines}。{citation_note}",
             "success",

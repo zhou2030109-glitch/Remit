@@ -12,7 +12,7 @@ from typing import Any
 import requests
 
 from app.schemas.response import ScholarMessage
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 
 _HTTP_TIMEOUT = (5, 30)
 
@@ -334,7 +334,7 @@ class OpenAlexScholar:
         payload: dict[str, Any] = {"query": query}
         if provider != "OpenAlex":
             payload["provider"] = provider
-        await redis_manager.publish_message(
+        await task_bus.publish_message(
             self.task_id,
             ScholarMessage(input=payload, output=[p["title"] for p in papers]),
         )

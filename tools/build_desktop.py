@@ -176,32 +176,12 @@ def mac_openmp(stage, build):
         subprocess.check_output(["brew", "info", "--json=v2", "libomp"], text=True), encoding="utf-8")
 
 
-def runtime_redis(stage, build):
-    target = stage / "runtime/redis"
-    target.mkdir(parents=True, exist_ok=True)
-    if WINDOWS:
-        for name in ("redis-server.exe", "redis-cli.exe", "msys-2.0.dll", "msys-crypto-3.dll",
-                     "msys-gcc_s-seh-1.dll", "msys-ssl-3.dll", "msys-stdc++-6.dll"):
-            shutil.copy2(REPO / "tools/redis" / name, target / name)
-        shutil.copytree(REPO / "tools/redis/LICENCES", stage / "licenses/redis", dirs_exist_ok=True)
-    elif not (target / "redis-server").exists():
-        archive = download("redis_macos", build / "downloads")
-        source = build / "redis-source"
-        unpack(archive, source)
-        directory = source / "redis-7.2.6"
-        run(["make", "-j2", "BUILD_TLS=no"], cwd=directory)
-        for name in ("redis-server", "redis-cli"):
-            shutil.copy2(directory / "src" / name, target / name)
-        (stage / "licenses/redis").mkdir(exist_ok=True)
-        shutil.copy2(directory / "COPYING", stage / "licenses/redis/COPYING")
-
-
 def verify(stage, python, build):
     sys.path.insert(0, str(REPO / "tools"))
     from desktop_runtime import environment
     data = build / "verification data 中文"
     env = environment(data, stage)
-    # Remove PATH access to the build host's Python, Node, Redis, Pandoc and TeX.
+    # Remove PATH access to the build host's Python, Node, Pandoc and TeX.
     system_path = str(Path(os.environ["SystemRoot"]) / "System32") if WINDOWS else "/usr/bin:/bin:/usr/sbin:/sbin"
     binary = stage / "runtime/tinytex/bin" / ("windows" if WINDOWS else "universal-darwin")
     env["PATH"] = os.pathsep.join([str(python.parent), str(binary), system_path])
@@ -304,7 +284,6 @@ def main():
     python = runtime_python(stage, build)
     mac_openmp(stage, build)
     runtime_tex(stage, build)
-    runtime_redis(stage, build)
     verify(stage, python, build)
     if not args.stage_only:
         (windows_installer if WINDOWS else mac_installer)(stage, build, output)

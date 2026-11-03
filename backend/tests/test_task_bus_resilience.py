@@ -1,4 +1,4 @@
-"""Regression tests for Redis/WebSocket connection exhaustion."""
+"""Regression tests for task bus / WebSocket resource release and bounds."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from app.routers import common_router
 from app.routers.ws_router import websocket_endpoint
 from app.schemas.enums import AgentType
 from app.schemas.response import SystemMessage
-from app.services.redis_manager import RedisManager
+from app.services.task_bus import TaskBus
 
 
 class _FakeWebSocket:
@@ -33,27 +33,16 @@ class _DisconnectingWebSocket(_FakeWebSocket):
         return {"type": "websocket.disconnect", "code": 1000}
 
 
-class RedisConnectionResilienceTests(unittest.IsolatedAsyncioTestCase):
-    async def test_service_status_bounds_a_slow_redis_probe(self) -> None:
-        """Redis 探测卡住时状态接口仍应及时返回，而不是让前端超时。"""
-        redis_client = AsyncMock()
+class TaskBusResilienceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_service_status_bounds_a_slow_archive_probe(self) -> None:
+        """档案探测卡住时状态接口仍应及时返回，而不是让前端超时。"""
 
-        async def slow_ping() -> None:
+        async def slow_archive(*_args):
             await asyncio.sleep(1)
 
-        redis_client.ping.side_effect = slow_ping
         with (
-            patch.object(
-                common_router.redis_manager,
-                "get_client",
-                new=AsyncMock(return_value=redis_client),
-            ),
-            patch.object(
-                common_router,
-                "_REDIS_STATUS_TIMEOUT_SECONDS",
-                0.01,
-                create=True,
-            ),
+            patch.object(common_router.task_bus, "_archive_call", new=slow_archive),
+            patch.object(common_router, "_STATUS_TIMEOUT_SECONDS", 0.01),
         ):
             status = await asyncio.wait_for(
                 common_router.get_service_status(),
@@ -61,7 +50,7 @@ class RedisConnectionResilienceTests(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(status["backend"]["status"], "running")
-        self.assertEqual(status["redis"]["status"], "error")
+        self.assertEqual(status["task_bus"]["status"], "error")
 
     async def test_websocket_releases_pubsub_connection_after_disconnect(self) -> None:
         pubsub = AsyncMock()
@@ -70,11 +59,11 @@ class RedisConnectionResilienceTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.routers.ws_router.redis_manager.task_exists",
+                "app.routers.ws_router.task_bus.task_exists",
                 new=AsyncMock(return_value=True),
             ),
             patch(
-                "app.routers.ws_router.redis_manager.subscribe_to_task",
+                "app.routers.ws_router.task_bus.subscribe_to_task",
                 new=AsyncMock(return_value=pubsub),
             ),
             patch(
@@ -88,7 +77,6 @@ class RedisConnectionResilienceTests(unittest.IsolatedAsyncioTestCase):
         ):
             await websocket_endpoint(websocket, "20260716-052635-87215f64")
 
-        pubsub.unsubscribe.assert_awaited_once()
         pubsub.aclose.assert_awaited_once()
 
     async def test_client_disconnect_is_consumed_and_releases_pubsub(self) -> None:
@@ -98,11 +86,11 @@ class RedisConnectionResilienceTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.routers.ws_router.redis_manager.task_exists",
+                "app.routers.ws_router.task_bus.task_exists",
                 new=AsyncMock(return_value=True),
             ),
             patch(
-                "app.routers.ws_router.redis_manager.subscribe_to_task",
+                "app.routers.ws_router.task_bus.subscribe_to_task",
                 new=AsyncMock(return_value=pubsub),
             ),
             patch(
@@ -122,7 +110,6 @@ class RedisConnectionResilienceTests(unittest.IsolatedAsyncioTestCase):
                 timeout=0.5,
             )
 
-        pubsub.unsubscribe.assert_awaited_once()
         pubsub.aclose.assert_awaited_once()
 
     async def test_websocket_accepts_task_from_durable_history_after_restart(
@@ -134,19 +121,11 @@ class RedisConnectionResilienceTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.routers.ws_router.redis_manager.task_exists",
+                "app.routers.ws_router.task_bus.task_exists",
                 new=AsyncMock(return_value=True),
             ) as task_exists,
             patch(
-                "app.routers.ws_router.redis_manager.get_client",
-                new=AsyncMock(
-                    side_effect=AssertionError(
-                        "WebSocket existence checks must not require a Redis key"
-                    )
-                ),
-            ),
-            patch(
-                "app.routers.ws_router.redis_manager.subscribe_to_task",
+                "app.routers.ws_router.task_bus.subscribe_to_task",
                 new=AsyncMock(return_value=pubsub),
             ),
             patch(
@@ -163,26 +142,28 @@ class RedisConnectionResilienceTests(unittest.IsolatedAsyncioTestCase):
         task_exists.assert_awaited_once_with("20260716-052635-87215f64")
         pubsub.aclose.assert_awaited_once()
 
-    async def test_publish_keeps_durable_message_when_realtime_channel_is_full(
+    async def test_full_subscription_keeps_durable_messages_and_newest_payloads(
         self,
     ) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            manager = RedisManager(messages_dir=Path(tmp))
-            redis_client = AsyncMock()
-            redis_client.publish.side_effect = ConnectionError("Too many connections")
-
-            with patch.object(
-                manager,
-                "get_client",
-                new=AsyncMock(return_value=redis_client),
-            ):
+        task_id = "20260716-052635-87215f64"
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("app.services.task_bus._SUBSCRIPTION_BUFFER", 2),
+        ):
+            manager = TaskBus(messages_dir=Path(tmp))
+            subscription = await manager.subscribe_to_task(task_id)
+            for index in range(3):
                 await manager.publish_message(
-                    "20260716-052635-87215f64",
-                    SystemMessage(content="result persisted"),
+                    task_id, SystemMessage(content=f"result {index}")
                 )
-
-            messages = await manager.load_task_messages("20260716-052635-87215f64")
-            self.assertEqual(messages[-1]["content"], "result persisted")
+            messages = await manager.load_task_messages(task_id)
+            self.assertEqual(
+                [m["content"] for m in messages], ["result 0", "result 1", "result 2"]
+            )
+            buffered = [(await subscription.get_message())["data"] for _ in range(2)]
+            self.assertIn("result 1", buffered[0])
+            self.assertIn("result 2", buffered[1])
+            self.assertIsNone(await subscription.get_message())
 
     async def test_successful_model_response_is_not_retried_when_publish_fails(
         self,

@@ -10,6 +10,7 @@ $FrontendPort = 15173
 $services = @(
     @{ Name = "frontend"; Port = $FrontendPort },
     @{ Name = "backend"; Port = $BackendPort },
+    # 旧版本由启动器托管的 Redis 已不再需要，停止时一并回收遗留进程。
     @{ Name = "redis"; Port = $RedisPort }
 )
 
@@ -84,20 +85,6 @@ function Test-RecordedProcess([int]$ProcessId, [string]$Name, [string]$IdentityP
 }
 
 function Stop-ServiceTree([int]$ProcessId, [string]$Name) {
-    if ($Name -eq "redis") {
-        $python = Join-Path $Root "backend\.venv\Scripts\python.exe"
-        if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
-            $python = Join-Path $Root "backend\venv\Scripts\python.exe"
-        }
-        & $python (Join-Path $PSScriptRoot "redis_lifecycle.py") stop --port $RedisPort
-        if ($LASTEXITCODE -ne 0) { throw "Redis could not save its state; leaving it running." }
-        $process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
-        if ($null -ne $process -and -not $process.WaitForExit(10000)) {
-            throw "Redis is still exiting after saving; leaving it running."
-        }
-        Write-Host "[STOPPED] $Name (PID $ProcessId, saved)"
-        return
-    }
     & taskkill.exe /PID $ProcessId /T /F | Out-Null
     if ($LASTEXITCODE -ne 0 -and (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) {
         throw "Could not stop $Name (PID $ProcessId)."

@@ -3,7 +3,7 @@
 # 产物: <BuildRoot>\output\RemitSetup.exe
 #
 # 原理：把基础 Python + 锁文件创建的生产 site-packages 合并为"便携运行时"，
-# 前端以静态文件形式由后端直接托管，Redis 使用包内二进制，MATLAB 缺失时自动回退 Python。
+# 前端以静态文件形式由后端直接托管，MATLAB 缺失时自动回退 Python。
 
 [CmdletBinding()]
 param(
@@ -189,7 +189,6 @@ Write-Host "[3/7] 生成运行配置 .env.dev..."
 $envLines = Get-Content -LiteralPath (Join-Path $RepoRoot "backend\.env.example")
 $envOverrides = @{
     "^ENV=.*" = "ENV=dev"
-    "^REDIS_URL=.*" = "REDIS_URL=redis://127.0.0.1:16379/0"
     "^CORS_ALLOW_ORIGINS=.*" = "CORS_ALLOW_ORIGINS=http://localhost:18000,http://127.0.0.1:18000"
     "^SERVER_HOST=.*" = "SERVER_HOST=http://localhost:18000"
     "^LOG_LEVEL=.*" = "LOG_LEVEL=INFO"
@@ -236,18 +235,13 @@ if (Test-Path -LiteralPath (Join-Path $VenvDir "share")) {
     Invoke-Robocopy (Join-Path $VenvDir "share") (Join-Path $Stage "runtime\share") -ExcludeDirs @("__pycache__")
 }
 
-# ---------- 6. 复制前端、Redis、资产与启动脚本 ----------
-Write-Host "[5/7] 复制前端、Redis 与启动脚本..."
+# ---------- 6. 复制前端、资产与启动脚本 ----------
+Write-Host "[5/7] 复制前端与启动脚本..."
 Invoke-Robocopy (Join-Path $RepoRoot "frontend\dist") (Join-Path $Stage "frontend\dist")
 $assetsDir = Join-Path $Stage "assets"
 New-Item -ItemType Directory -Force -Path $assetsDir | Out-Null
 foreach ($icon in @("remit-icon.png", "remit-m-icon.png", "remit-m-icon.ico")) {
     Copy-Item -LiteralPath (Join-Path $RepoRoot "assets\$icon") -Destination $assetsDir -Force
-}
-$redisDst = Join-Path $Stage "tools\redis"
-New-Item -ItemType Directory -Force -Path $redisDst | Out-Null
-foreach ($redisFile in @("redis-server.exe", "redis-cli.exe", "msys-2.0.dll", "msys-crypto-3.dll", "msys-gcc_s-seh-1.dll", "msys-ssl-3.dll", "msys-stdc++-6.dll")) {
-    Copy-Item -LiteralPath (Join-Path $RepoRoot "tools\redis\$redisFile") -Destination $redisDst -Force
 }
 foreach ($entryPoint in @("remit_prod_app", "verify_portable_runtime")) {
     $entrySource = Join-Path $Stage "tools\$entryPoint.py"
@@ -271,7 +265,6 @@ New-Item -ItemType Directory -Force -Path $packageDocs | Out-Null
 foreach ($doc in @("distribution.md", "paper-library.md")) {
     Copy-Item -LiteralPath (Join-Path $RepoRoot "docs\$doc") -Destination $packageDocs -Force
 }
-Invoke-Robocopy (Join-Path $RepoRoot "tools\redis\LICENCES") (Join-Path $Stage "tools\redis\LICENCES")
 New-Item -ItemType Directory -Force -Path (Join-Path $Stage "logs") | Out-Null
 
 # 版本信息
@@ -287,7 +280,7 @@ Write-Utf8NoBom -Path (Join-Path $Stage "VERSION.txt") -Lines @(
     "Remit 打包版本 2.0.1",
     "构建时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
     "来源提交: $gitHash",
-    "内置 $PythonVersion + Redis + 前端静态文件",
+    "内置 $PythonVersion + 前端静态文件",
     "源码形式: $SourceLayout",
     "来源与许可: 请阅读随附 LICENSE、NOTICE.md 与 THIRD_PARTY_NOTICES.md"
 )

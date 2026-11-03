@@ -42,7 +42,7 @@ def task(tmp_path, monkeypatch):
     monkeypatch.setattr(modeling_router, "_active_tasks", {})
     monkeypatch.setattr(modeling_router, "_scheduled_tasks", set())
     monkeypatch.setattr(
-        modeling_router.redis_manager, "clear_cancellation_request", AsyncMock()
+        modeling_router.task_bus, "clear_cancellation_request", AsyncMock()
     )
     return root, cp
 
@@ -176,7 +176,7 @@ def test_grant_survives_failed_scheduling_without_repeating_allowance(
     budget = legacy_exhaustion(task)
     request = request_for(budget.snapshot("review"))
     monkeypatch.setattr(
-        modeling_router.redis_manager,
+        modeling_router.task_bus,
         "clear_cancellation_request",
         AsyncMock(side_effect=ConnectionError("redis")),
     )
@@ -187,7 +187,7 @@ def test_grant_survives_failed_scheduling_without_repeating_allowance(
     assert budget.snapshot("review")["limit"] == 30
     assert not modeling_router._scheduled_tasks
     monkeypatch.setattr(
-        modeling_router.redis_manager, "clear_cancellation_request", AsyncMock()
+        modeling_router.task_bus, "clear_cancellation_request", AsyncMock()
     )
     background = BackgroundTasks()
     asyncio.run(modeling_router.resume_task(task[0].name, request, background))
@@ -294,12 +294,12 @@ def test_budget_stop_is_persisted_as_pause_and_never_auto_retried(task, monkeypa
     workflow.mark_status.side_effect = checkpoint.mark_status
     monkeypatch.setattr(modeling_router, "RemitWorkFlow", lambda: workflow)
     monkeypatch.setattr(
-        modeling_router.redis_manager,
+        modeling_router.task_bus,
         "is_cancellation_requested",
         AsyncMock(return_value=False),
     )
     publish = AsyncMock()
-    monkeypatch.setattr(modeling_router.redis_manager, "publish_message", publish)
+    monkeypatch.setattr(modeling_router.task_bus, "publish_message", publish)
     monkeypatch.setattr(modeling_router, "_auto_resume_after_failure", AsyncMock())
     asyncio.run(
         modeling_router.run_modeling_task_async(

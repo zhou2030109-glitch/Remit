@@ -39,7 +39,7 @@ class PilotOutcomeTests(unittest.IsolatedAsyncioTestCase):
             }
             with (
                 patch(
-                    "app.core.workflow.redis_manager.publish_message",
+                    "app.core.workflow.task_bus.publish_message",
                     new_callable=AsyncMock,
                 ),
                 patch("app.core.workflow.publish_activity", new_callable=AsyncMock),
@@ -75,7 +75,7 @@ class PilotOutcomeTests(unittest.IsolatedAsyncioTestCase):
             state = {"problem": {"task_purpose": "numerical_verification"}}
             with (
                 patch(
-                    "app.core.workflow.redis_manager.publish_message",
+                    "app.core.workflow.task_bus.publish_message",
                     new_callable=AsyncMock,
                 ),
                 patch("app.core.workflow.publish_activity", new_callable=AsyncMock),
@@ -114,7 +114,7 @@ class PilotOutcomeTests(unittest.IsolatedAsyncioTestCase):
             state = {}
             with (
                 patch(
-                    "app.core.workflow.redis_manager.publish_message",
+                    "app.core.workflow.task_bus.publish_message",
                     new_callable=AsyncMock,
                 ),
                 patch("app.core.workflow.publish_activity", new_callable=AsyncMock),

@@ -102,6 +102,7 @@ service_port() {
 
 overall_status=0
 
+# redis 仅用于回收旧版本启动的遗留进程。
 for service in frontend backend redis; do
 	port="$(service_port "$service")"
 	pid_file="$LOG_DIR/$service.pid"

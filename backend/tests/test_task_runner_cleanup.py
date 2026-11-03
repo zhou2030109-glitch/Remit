@@ -38,11 +38,11 @@ def runner(tmp_path, monkeypatch):
     monkeypatch.setattr(router, "_auto_resume_handles", set())
     monkeypatch.setattr(router.settings, "TASK_AUTO_RESUME_BASE_DELAY_SECONDS", 0)
     monkeypatch.setattr(router, "_AUTO_RESUME_LIMIT", 1)
-    monkeypatch.setattr(router.redis_manager, "publish_message", AsyncMock())
+    monkeypatch.setattr(router.task_bus, "publish_message", AsyncMock())
     monkeypatch.setattr(
-        router.redis_manager, "is_cancellation_requested", AsyncMock(return_value=False)
+        router.task_bus, "is_cancellation_requested", AsyncMock(return_value=False)
     )
-    monkeypatch.setattr(router.redis_manager, "clear_cancellation_request", AsyncMock())
+    monkeypatch.setattr(router.task_bus, "clear_cancellation_request", AsyncMock())
     return task_id, workflow, checkpoint
 
 
@@ -92,7 +92,7 @@ def test_failed_final_status_publish_still_releases_task_registry(runner, monkey
             if getattr(message, "task_status", None) == "stopped":
                 raise OSError("archive temporarily unavailable")
 
-        monkeypatch.setattr(router.redis_manager, "publish_message", publish)
+        monkeypatch.setattr(router.task_bus, "publish_message", publish)
         router._pending_cancellations.add(task_id)
         try:
             await router.run_modeling_task_async(task_id, "test", "CHINA", "LaTeX")
@@ -102,7 +102,7 @@ def test_failed_final_status_publish_still_releases_task_registry(runner, monkey
         assert task_id not in router._active_tasks
         assert task_id not in router._scheduled_tasks
         assert task_id not in router._pending_cancellations
-        router.redis_manager.clear_cancellation_request.assert_awaited_once_with(
+        router.task_bus.clear_cancellation_request.assert_awaited_once_with(
             task_id
         )
 
@@ -169,7 +169,7 @@ def test_cancel_request_cannot_revert_stopped_state_after_cleanup(runner, monkey
             "_load_workflow_checkpoint",
             lambda _: (checkpoint, checkpoint.load()),
         )
-        monkeypatch.setattr(router.redis_manager, "request_cancellation", persist)
+        monkeypatch.setattr(router.task_bus, "request_cancellation", persist)
         task = asyncio.create_task(worker())
         router._active_tasks[task_id] = (task, asyncio.Event())
         await started.wait()

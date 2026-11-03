@@ -28,7 +28,6 @@ def main():
         # Use the application's existing configuration; only local data and
         # message storage are isolated. No pre-completed workflow is seeded.
         os.environ["REMIT_MESSAGES_DIR"] = str(data / "logs/messages")
-        os.environ["REDIS_URL"] = "redis://127.0.0.1:16380/14"
         os.environ["SERVER_HOST"] = f"http://127.0.0.1:{args.port}"
         import uvicorn
         from app.main import app
@@ -41,7 +40,6 @@ def main():
         return
     os.environ["REMIT_USER_CONFIG_PATH"] = str(data / ".env.test-user")
     os.environ["REMIT_MESSAGES_DIR"] = str(data / "logs" / "messages")
-    os.environ["REDIS_URL"] = "redis://127.0.0.1:16380/14"
     os.environ["SERVER_HOST"] = f"http://127.0.0.1:{args.port}"
     os.environ["CODE_EXECUTION_BACKEND"] = "python"
     os.environ["PDF_VISION_ENABLED"] = "false"

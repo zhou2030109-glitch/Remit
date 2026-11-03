@@ -9,7 +9,7 @@ from app.core.workflow import RemitWorkFlow
 from app.core.workflow_checkpoint import WorkflowCheckpoint
 from app.schemas.A2A import CoordinatorToModeler, ModelerToCoder, ModelScoutProposal
 from app.schemas.request import Problem
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def modeling(tmp_path, monkeypatch):
     )
     workflow.checkpoint.start_node(state, "modeler")
     monkeypatch.setattr(settings, "METHOD_RETRIEVAL_ENABLED", False)
-    monkeypatch.setattr(redis_manager, "publish_message", AsyncMock())
+    monkeypatch.setattr(task_bus, "publish_message", AsyncMock())
     primary = ModelerToCoder(questions_solution={"ques1": "saved plan"})
     scout = ModelScoutProposal(
         questions={},

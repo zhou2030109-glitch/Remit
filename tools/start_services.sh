@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-# Remit POSIX 服务启动器（macOS / Linux）：Redis + FastAPI + Vue。
+# Remit POSIX 服务启动器（macOS / Linux）：FastAPI + Vue。
 #
 # 用法:
-#   tools/start_services.sh            后台启动三个服务，日志写入 logs/
+#   tools/start_services.sh            后台启动两个服务，日志写入 logs/
 #   tools/start_services.sh --check    只校验启动依赖，不启动任何服务
 #
 # 与 tools/start_services.ps1 保持同一端口契约:
-#   Redis 16379 / Backend 18000 / Frontend 15173
-#
-# Redis 不随仓库捆绑（Windows 专用目录 tools/redis 仅含 exe），POSIX 环境按
-# 仓库内置可执行文件 → PATH → Homebrew 的顺序发现本机 redis-server。
+#   Backend 18000 / Frontend 15173
 
 set -u
 
@@ -18,7 +15,6 @@ BACKEND_DIR="$ROOT/backend"
 FRONTEND_DIR="$ROOT/frontend"
 LOG_DIR="$ROOT/logs"
 
-REDIS_PORT=16379
 BACKEND_PORT=18000
 FRONTEND_PORT=15173
 
@@ -44,39 +40,18 @@ die() {
 	exit 1
 }
 
-find_redis_executable() {
-	local candidate
-	for candidate in \
-		"$ROOT/tools/redis/redis-server" \
-		"$(command -v redis-server 2>/dev/null || true)" \
-		/opt/homebrew/opt/redis/bin/redis-server \
-		/usr/local/opt/redis/bin/redis-server \
-		/opt/homebrew/bin/redis-server \
-		/usr/local/bin/redis-server; do
-		if [ -n "$candidate" ] && [ -x "$candidate" ]; then
-			printf '%s' "$candidate"
-			return 0
-		fi
-	done
-	return 1
-}
-
 # 后端必须以 backend/ 为工作目录启动：项目内多处使用相对路径 project/work_dir。
 BACKEND_PYTHON="$BACKEND_DIR/.venv/bin/python"
 if [ ! -x "$BACKEND_PYTHON" ]; then
 	BACKEND_PYTHON="$BACKEND_DIR/venv/bin/python"
 fi
 
-REDIS_BIN="$(find_redis_executable || true)"
 NODE_BIN="$(command -v node 2>/dev/null || true)"
 PNPM_BIN="$(command -v pnpm 2>/dev/null || true)"
 
 assert_dependencies() {
 	if ! command -v lsof >/dev/null 2>&1; then
 		die "未找到 lsof。macOS 请安装 Xcode Command Line Tools；Linux 请安装 lsof。"
-	fi
-	if [ -z "$REDIS_BIN" ]; then
-		die "未找到可用的 redis-server。请先安装 Redis: brew install redis（或把可执行文件放到 tools/redis/redis-server）"
 	fi
 	if [ ! -x "$BACKEND_PYTHON" ]; then
 		die "后端虚拟环境不存在。请先执行: cd backend && uv sync --frozen"
@@ -147,7 +122,6 @@ listener_belongs_to_service() {
 listener_matches_started_service() {
 	local name="$1" pid="$2" expected_cwd cwd
 	case "$name" in
-	redis) expected_cwd="$ROOT" ;;
 	backend) expected_cwd="$BACKEND_DIR" ;;
 	frontend) expected_cwd="$FRONTEND_DIR" ;;
 	*) return 1 ;;
@@ -226,24 +200,18 @@ if [ "$CHECK_ONLY" = "1" ]; then
 	exit 0
 fi
 
-# 没有本地配置时先从模板生成，避免裸跑落到 Docker 专用默认值 redis://redis:6379。
+# 没有本地配置时先从模板生成。
 if [ ! -f "$BACKEND_DIR/.env.dev" ] && [ -f "$BACKEND_DIR/.env.example" ]; then
 	cp "$BACKEND_DIR/.env.example" "$BACKEND_DIR/.env.dev"
 	echo "[INIT] 已从 .env.example 生成 backend/.env.dev，请按需填写模型 API Key。"
 fi
 
-mkdir -p "$LOG_DIR" "$LOG_DIR/redis-data"
+mkdir -p "$LOG_DIR"
 
 echo "=============================================="
-echo " Remit: Redis + FastAPI + Vue (macOS/Linux)"
+echo " Remit: FastAPI + Vue (macOS/Linux)"
 echo " Mode: hidden background services"
 echo "=============================================="
-
-start_service redis "$REDIS_PORT" "$ROOT" \
-	"$REDIS_BIN" --port "$REDIS_PORT" --bind 127.0.0.1 ::1 --dir "$LOG_DIR/redis-data"
-if ! wait_for_port redis "$REDIS_PORT" 30; then
-	die "Redis 启动失败。可执行 bash tools/stop_services.sh 清理已启动的服务。"
-fi
 
 start_service backend "$BACKEND_PORT" "$BACKEND_DIR" \
 	"$BACKEND_PYTHON" -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" \

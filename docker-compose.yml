@@ -1,20 +1,7 @@
-# Remit 全栈开发环境：Redis + 后端 + 前端
-# 三个服务使用 Remit 专属主机端口，避免与本机其他项目冲突。
+# Remit 全栈开发环境：后端 + 前端
+# 两个服务使用 Remit 专属主机端口，避免与本机其他项目冲突。
 
 services:
-  redis:
-    image: redis:7.4-alpine
-    container_name: remit_redis
-    ports:
-      - "16379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   backend:
     build:
       context: ./backend
@@ -27,7 +14,6 @@ services:
         required: false
     environment:
       ENV: DEV
-      REDIS_URL: redis://redis:6379/0
       SERVER_HOST: http://localhost:18000
       CORS_ALLOW_ORIGINS: http://localhost:15173,http://127.0.0.1:15173
     volumes:
@@ -38,11 +24,8 @@ services:
       # 依赖环境复用，避免重复构建
       - backend_venv:/app/.venv
     command: ["uv", "run", "--no-dev", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--ws-ping-interval", "60", "--ws-ping-timeout", "120"]
-    depends_on:
-      redis:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import json,urllib.request; s=json.load(urllib.request.urlopen('http://127.0.0.1:8000/status',timeout=3)); raise SystemExit(0 if s['redis']['status']=='running' else 1)"]
+      test: ["CMD", "python", "-c", "import json,urllib.request; s=json.load(urllib.request.urlopen('http://127.0.0.1:8000/status',timeout=3)); raise SystemExit(0 if s['task_bus']['status']=='running' else 1)"]
       interval: 15s
       timeout: 5s
       start_period: 60s
@@ -68,5 +51,4 @@ services:
     tty: true
 
 volumes:
-  redis_data:
   backend_venv:

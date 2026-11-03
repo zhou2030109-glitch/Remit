@@ -3,7 +3,7 @@
 from typing import Literal
 
 from app.schemas.response import ActivityMessage
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.utils.log_util import logger
 
 AGENT_LABELS = {
@@ -27,7 +27,7 @@ async def publish_activity(
     if not task_id:
         return
     try:
-        await redis_manager.publish_message(
+        await task_bus.publish_message(
             task_id,
             ActivityMessage(
                 id=f"activity:{task_id}",

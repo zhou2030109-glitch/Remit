@@ -16,10 +16,6 @@
     "url": "https://github.com/rstudio/tinytex-releases/releases/download/v2026.09/TinyTeX-darwin-v2026.09.tar.xz",
     "sha256": "b8d9528b0d475b64e00b379111438b26b9e127a9b2b76782aecfc5db3326aa03"
   },
-  "redis_macos": {
-    "url": "https://download.redis.io/releases/redis-7.2.6.tar.gz",
-    "sha256": "fb10d67a2fe2b4556f6cb840064dd6e6e3175ce8ca035f0726990ec2da9f3d0e"
-  },
   "inno": {
     "url": "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe",
     "sha256": "9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732"

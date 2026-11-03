@@ -18,7 +18,7 @@ from app.routers import (
 )
 from app.routers import team_router, project_router
 from app.services import paper_proposals, competitions
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.utils.cli import get_ascii_banner
 from app.utils.log_util import logger
 
@@ -28,11 +28,11 @@ _FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """启动时重建任务索引，退出时释放 Redis 连接。"""
+    """启动时重建任务索引，退出时清理实时订阅。"""
     print(get_ascii_banner())
     logger.info("Starting Remit")
 
-    interrupted = await redis_manager.reconcile_interrupted_tasks()
+    interrupted = await task_bus.reconcile_interrupted_tasks()
     if interrupted:
         logger.warning(f"已将 {interrupted} 个重启前未结束的任务标记为停止")
 
@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
         logger.info("Stopping Remit")
         await team_router.shutdown_team()
         await writing_router.shutdown_writers()
-        await redis_manager.close()
+        await task_bus.close()
 
 
 app = FastAPI(

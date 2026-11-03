@@ -162,8 +162,6 @@ class Settings(BaseSettings):
     TASK_AUTO_RESUME_BASE_DELAY_SECONDS: int = 30
     LOG_LEVEL: str = "DEBUG"
     DEBUG: bool = True
-    REDIS_URL: str = "redis://redis:6379/0"
-    REDIS_MAX_CONNECTIONS: int = 32
     UPLOAD_MAX_FILE_BYTES: int = Field(default=128 * 1024 * 1024, gt=0)
     UPLOAD_MAX_TOTAL_BYTES: int = Field(default=512 * 1024 * 1024, gt=0)
     UPLOAD_MAX_FILES: int = Field(default=1000, gt=0)

@@ -1,4 +1,4 @@
-"""Remit 生产版桌面入口：启动 Redis 与后端，打开工作台并常驻托盘。
+"""Remit 生产版桌面入口：启动后端，打开工作台并常驻托盘。
 
 设计要点：
 - 不依赖 PowerShell / Node / 系统 Python，全部使用包内 runtime。
@@ -33,7 +33,8 @@ import psutil
 
 APP_TITLE = "Remit 数学建模工作台"
 FRONTEND_URL = "http://127.0.0.1:18000/"
-REDIS_PORT = 16379
+# 旧版本使用的 Redis 端口；仅用于停止时回收遗留进程。
+LEGACY_REDIS_PORT = 16379
 BACKEND_PORT = 18000
 
 # 启动器自身（--check / --stop / UI）不写入任何 __pycache__，
@@ -46,7 +47,6 @@ else:
     ROOT = Path(__file__).resolve().parent.parent
 
 RUNTIME_PYTHON = ROOT / "runtime" / "python" / "python.exe"
-REDIS_EXE = ROOT / "tools" / "redis" / "redis-server.exe"
 BACKEND_DIR = ROOT / "backend"
 DATA_DIR = Path(os.environ.get("REMIT_DATA_DIR") or (Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Remit" / "data")).expanduser().resolve()
 LOG_DIR = DATA_DIR / "logs"
@@ -220,36 +220,6 @@ def _start_hidden(
     _pid_file(name).write_text(str(process.pid), encoding="ascii")
     logging.info("%s 已启动 (PID %s)", name, process.pid)
     return process
-
-
-def ensure_redis_running() -> None:
-    """启动包内 Redis；只复用当前安装目录所属的实例。"""
-    if port_is_open(REDIS_PORT):
-        if _owned_service_pid_for_port(REDIS_PORT) is not None:
-            logging.info("Redis 已在端口 %s 监听，复用当前安装实例", REDIS_PORT)
-            return
-        raise RuntimeError(
-            f"端口 {REDIS_PORT} 已被其他程序占用，请先退出旧版 Remit 或占用该端口的程序"
-        )
-    if not REDIS_EXE.is_file():
-        raise RuntimeError(f"缺少 Redis 可执行文件: {REDIS_EXE}")
-    _start_hidden(
-        [
-            str(REDIS_EXE),
-            "--port",
-            str(REDIS_PORT),
-            "--bind",
-            "127.0.0.1",
-            "::1",
-            "--save",
-            "",
-            "--appendonly",
-            "no",
-        ],
-        REDIS_EXE.parent,
-        "redis",
-    )
-    _wait_port(REDIS_PORT, timeout=30, service="Redis")
 
 
 def prepare_jupyter_kernelspec() -> None:
@@ -481,7 +451,7 @@ def stop_services() -> None:
 
     killed_services: set[str] = set()
     killed_pids: set[int] = set()
-    for name, port in (("redis", REDIS_PORT), ("backend", BACKEND_PORT)):
+    for name, port in (("redis", LEGACY_REDIS_PORT), ("backend", BACKEND_PORT)):
         pid_file = _pid_file(name)
         try:
             pid = int(pid_file.read_text(encoding="ascii").strip())
@@ -585,7 +555,6 @@ def check_installation() -> str:
     """检查包内文件是否齐全，供安装器与排障调用。"""
     required = [
         ("包内 Python", RUNTIME_PYTHON),
-        ("Redis", REDIS_EXE),
         ("后端代码", BACKEND_DIR / "app"),
         ("前端静态文件", ROOT / "frontend" / "dist" / "index.html"),
         ("字体", BACKEND_DIR / "fonts" / "simhei.ttf"),
@@ -651,7 +620,6 @@ def main() -> int:
 def _run_application(*, no_ui: bool) -> int:
     """由持有单实例句柄的进程管理服务和托盘。"""
     try:
-        ensure_redis_running()
         prepare_jupyter_kernelspec()
         ensure_backend_running()
     except Exception as exc:

@@ -45,7 +45,7 @@ def task(tmp_path, monkeypatch):
     monkeypatch.setattr(modeling_router, "_scheduled_tasks", set())
     monkeypatch.setattr(modeling_router, "_active_tasks", {})
     monkeypatch.setattr(
-        modeling_router.redis_manager, "clear_cancellation_request", AsyncMock()
+        modeling_router.task_bus, "clear_cancellation_request", AsyncMock()
     )
     return root, checkpoint
 
@@ -150,7 +150,7 @@ def make_agent(root, monkeypatch, failed=False):
     )
     monkeypatch.setattr("app.core.agents.coder_agent.publish_activity", AsyncMock())
     monkeypatch.setattr(
-        "app.core.agents.coder_agent.redis_manager.publish_message", AsyncMock()
+        "app.core.agents.coder_agent.task_bus.publish_message", AsyncMock()
     )
     return agent
 
@@ -210,7 +210,7 @@ def test_cancel_before_execution_does_not_reserve(task, monkeypatch):
         agent.cancel_event.set()
 
     monkeypatch.setattr(
-        "app.core.agents.coder_agent.redis_manager.publish_message", publish
+        "app.core.agents.coder_agent.task_bus.publish_message", publish
     )
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(agent.run("compute", "ques1"))
@@ -289,7 +289,7 @@ def reviewed_extension(task):
 def test_reviewed_grant_and_lost_response_retry_are_idempotent(task, monkeypatch):
     request = reviewed_extension(task)
     monkeypatch.setattr(
-        modeling_router.redis_manager,
+        modeling_router.task_bus,
         "clear_cancellation_request",
         AsyncMock(side_effect=RuntimeError("temporary redis failure")),
     )
@@ -301,7 +301,7 @@ def test_reviewed_grant_and_lost_response_retry_are_idempotent(task, monkeypatch
     assert budget().snapshot()["limit"] == 5
     assert budget().snapshot()["used"] == 2
     monkeypatch.setattr(
-        modeling_router.redis_manager, "clear_cancellation_request", AsyncMock()
+        modeling_router.task_bus, "clear_cancellation_request", AsyncMock()
     )
     background = BackgroundTasks()
     result = asyncio.run(
@@ -363,7 +363,7 @@ def test_duplicate_click_while_redis_is_pending_schedules_once(task, monkeypatch
             await release.wait()
 
         monkeypatch.setattr(
-            modeling_router.redis_manager, "clear_cancellation_request", clear
+            modeling_router.task_bus, "clear_cancellation_request", clear
         )
         first_background, duplicate_background = BackgroundTasks(), BackgroundTasks()
         first = asyncio.create_task(

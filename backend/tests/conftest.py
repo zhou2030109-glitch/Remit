@@ -1,4 +1,4 @@
-"""单元测试隔离本机任务档案和 Redis，禁止污染正在使用的工作区。"""
+"""单元测试隔离本机任务档案与任务总线，禁止污染正在使用的工作区。"""
 
 import os
 
@@ -7,20 +7,21 @@ os.environ["REMIT_FILE_LOG"] = "0"
 import pytest  # noqa: E402
 
 from app.services.message_archive import MessageArchive
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.routers import modeling_router
 
 
 @pytest.fixture(autouse=True)
 def isolated_message_archive(tmp_path, monkeypatch):
-    """每个测试获得独立持久化位置，真实 Redis 集成使用自行创建的 manager。"""
+    """每个测试获得独立持久化位置，需要独立总线的测试自行创建 TaskBus。"""
     directory = tmp_path / "messages"
-    monkeypatch.setattr(redis_manager, "messages_dir", directory)
-    monkeypatch.setattr(redis_manager, "archive", MessageArchive(directory))
-    monkeypatch.setattr(redis_manager, "redis_url", "redis://127.0.0.1:1/0")
-    monkeypatch.setattr(redis_manager, "_client", None)
-    monkeypatch.setattr(redis_manager, "_message_locks", {})
-    monkeypatch.setattr(redis_manager, "_deleting_tasks", set())
+    monkeypatch.setattr(task_bus, "messages_dir", directory)
+    monkeypatch.setattr(task_bus, "archive", MessageArchive(directory))
+    monkeypatch.setattr(task_bus, "_subscriptions", {})
+    monkeypatch.setattr(task_bus, "_user_notes", {})
+    monkeypatch.setattr(task_bus, "_cancellation_requests", set())
+    monkeypatch.setattr(task_bus, "_message_locks", {})
+    monkeypatch.setattr(task_bus, "_deleting_tasks", set())
     modeling_router._pending_cancellations.clear()
     modeling_router._scheduled_tasks.clear()
     modeling_router._active_tasks.clear()

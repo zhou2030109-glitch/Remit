@@ -31,14 +31,14 @@ def response(body, status=200):
     lambda: response(b"<html>wrong server</html>"),
     lambda: response(b'{"backend":null}'),
     lambda: response(b'{"backend":{"status":"starting"}}'),
-    lambda: response(b'{"backend":{"status":"running"},"redis":{"status":"error"}}'),
+    lambda: response(b'{"backend":{"status":"running"},"task_bus":{"status":"error"}}'),
     lambda: response(b"", 204),
 ])
 def test_waits_for_real_api_response(desktop, first):
     shutdown = Mock()
     shutdown.is_set.return_value = False
     owner = SimpleNamespace(shutdown_event=shutdown)
-    ready = response(b'{"backend":{"status":"running"},"redis":{"status":"running"}}')
+    ready = response(b'{"backend":{"status":"running"},"task_bus":{"status":"running"}}')
     with patch.object(desktop.urllib.request, "urlopen", side_effect=[first(), ready]) as request:
         assert desktop.DesktopApp._wait_until_ready(owner, "http://local/status", 2, backend=True)
     assert request.call_count == 2

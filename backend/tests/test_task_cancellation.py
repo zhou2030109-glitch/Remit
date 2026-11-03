@@ -18,7 +18,7 @@ from app.routers.modeling_router import (
     cancel_task,
 )
 from app.schemas.response import SystemMessage, UserMessage
-from app.services.redis_manager import RedisManager
+from app.services.task_bus import TaskBus
 
 
 class TaskCancellationTests(unittest.IsolatedAsyncioTestCase):
@@ -53,7 +53,7 @@ class TaskCancellationTests(unittest.IsolatedAsyncioTestCase):
         _active_tasks[task_id] = (task, cancel_event)
 
         with patch(
-            "app.routers.modeling_router.redis_manager.request_cancellation",
+            "app.routers.modeling_router.task_bus.request_cancellation",
             new=AsyncMock(),
         ):
             response = await cancel_task(task_id)
@@ -71,15 +71,15 @@ class TaskCancellationTests(unittest.IsolatedAsyncioTestCase):
         ]
         with (
             patch(
-                "app.routers.modeling_router.redis_manager.request_cancellation",
+                "app.routers.modeling_router.task_bus.request_cancellation",
                 new=AsyncMock(),
             ),
             patch(
-                "app.routers.modeling_router.redis_manager.load_task_messages",
+                "app.routers.modeling_router.task_bus.load_task_messages",
                 new=AsyncMock(return_value=messages),
             ),
             patch(
-                "app.routers.modeling_router.redis_manager.publish_message",
+                "app.routers.modeling_router.task_bus.publish_message",
                 new=AsyncMock(),
             ) as publish,
         ):
@@ -102,7 +102,7 @@ class TaskCancellationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_restart_reconciles_nonterminal_history(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            manager = RedisManager(messages_dir=Path(tmp))
+            manager = TaskBus(messages_dir=Path(tmp))
             task_id = "interrupted-by-restart"
             await manager._save_message_to_file(
                 task_id,

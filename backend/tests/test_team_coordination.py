@@ -15,7 +15,7 @@ from app.core.workflow_checkpoint import WorkflowCheckpoint
 from app.routers import modeling_router, team_router as router, writing_router
 from app.schemas.request import Problem
 from app.services import team_state as team
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.services import writing_workspace as paper
 
 
@@ -48,9 +48,9 @@ def project(tmp_path, monkeypatch):
         questions={"ques1": "预测温度"}, coordinator_response={}, modeler_response={}
     )
     checkpoint.save(state)
-    monkeypatch.setattr(redis_manager, "load_task_messages", AsyncMock(return_value=[]))
-    monkeypatch.setattr(redis_manager, "clear_cancellation_request", AsyncMock())
-    monkeypatch.setattr(redis_manager, "publish_message", AsyncMock())
+    monkeypatch.setattr(task_bus, "load_task_messages", AsyncMock(return_value=[]))
+    monkeypatch.setattr(task_bus, "clear_cancellation_request", AsyncMock())
+    monkeypatch.setattr(task_bus, "publish_message", AsyncMock())
     router._locks.clear()
     router._interruptions.clear()
     yield root, checkpoint

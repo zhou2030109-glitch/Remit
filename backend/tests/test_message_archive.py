@@ -9,11 +9,11 @@ import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from app.schemas.response import SystemMessage, UserMessage
 from app.services.message_archive import MessageArchive
-from app.services.redis_manager import RedisManager
+from app.services.task_bus import TaskBus
 from app.services.task_state import message_task_status, task_status_from_messages
 
 
@@ -217,25 +217,21 @@ class AsyncMessageArchiveTests(unittest.IsolatedAsyncioTestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.manager = RedisManager(self.root)
-        self.redis = AsyncMock()
-        self.manager.get_client = AsyncMock(return_value=self.redis)
+        self.manager = TaskBus(self.root)
 
     async def test_broadcast_carries_the_already_committed_sequence(self):
         message = SystemMessage(
             content="Finished with different wording", task_status="completed"
         )
-
-        async def observe_publish(_channel, payload):
-            broadcast = json.loads(payload)
-            committed = await self.manager.load_task_messages("broadcast-task")
-            self.assertEqual(committed[-1]["sequence"], broadcast["sequence"])
-            self.assertEqual(committed[-1]["task_status"], "completed")
-
-        self.redis.publish.side_effect = observe_publish
+        subscription = await self.manager.subscribe_to_task("broadcast-task")
         await self.manager.publish_message("broadcast-task", message)
-        self.redis.publish.assert_awaited_once()
+        broadcast = json.loads((await subscription.get_message())["data"])
+        committed = await self.manager.load_task_messages("broadcast-task")
+        self.assertEqual(committed[-1]["sequence"], broadcast["sequence"])
+        self.assertEqual(committed[-1]["task_status"], "completed")
         self.assertIsInstance(message.sequence, int)
+        await subscription.aclose()
+        self.assertFalse(self.manager._subscriptions)
 
     async def test_restart_reconciles_only_explicitly_running_tasks(self):
         for status in ("running", "completed", "awaiting_approval"):
@@ -243,7 +239,7 @@ class AsyncMessageArchiveTests(unittest.IsolatedAsyncioTestCase):
                 f"restart-{status}",
                 SystemMessage(content="state wording", task_status=status),
             )
-        restarted = RedisManager(self.root)
+        restarted = TaskBus(self.root)
         self.assertEqual(await restarted.reconcile_interrupted_tasks(), 1)
         self.assertEqual(await restarted.reconcile_interrupted_tasks(), 0)
         summaries = {
@@ -350,16 +346,18 @@ class AsyncMessageArchiveTests(unittest.IsolatedAsyncioTestCase):
         await self.manager._save_message_to_file(
             "deleting-task", UserMessage(content="old")
         )
-        redis_cleanup_started = asyncio.Event()
-        release_cleanup = asyncio.Event()
+        cleanup_started = threading.Event()
+        release_cleanup = threading.Event()
+        original_delete = self.manager.archive.delete
 
-        async def slow_redis_delete(*_args):
-            redis_cleanup_started.set()
-            await release_cleanup.wait()
+        def slow_delete(task_id):
+            cleanup_started.set()
+            release_cleanup.wait(2)
+            return original_delete(task_id)
 
-        self.redis.delete.side_effect = slow_redis_delete
+        self.manager.archive.delete = slow_delete
         deletion = asyncio.create_task(self.manager.delete_task_record("deleting-task"))
-        await redis_cleanup_started.wait()
+        await asyncio.to_thread(cleanup_started.wait, 2)
         try:
             with self.assertRaisesRegex(RuntimeError, "任务正在删除"):
                 await self.manager._save_message_to_file(

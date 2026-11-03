@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import os
 import shutil
-import signal
 import socket
 import subprocess
 import sys
@@ -17,7 +15,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 START_SERVICES = PROJECT_ROOT / "tools" / "start_services.sh"
 STOP_SERVICES = PROJECT_ROOT / "tools" / "stop_services.sh"
-REDIS_PORT = 16379
+BACKEND_PORT = 18000
 
 
 def wait_for_port(port: int, *, listening: bool, timeout: float = 10) -> None:
@@ -46,12 +44,10 @@ class PosixStartLauncherTests(unittest.TestCase):
     def test_launcher_anchors_itself_to_project_root(self) -> None:
         text = START_SERVICES.read_text(encoding="utf-8")
         self.assertIn("${BASH_SOURCE[0]}", text)
-        self.assertIn("tools/redis/redis-server", text)
-        self.assertIn("/opt/homebrew/opt/redis/bin/redis-server", text)
+        self.assertNotIn("redis", text.lower())
 
     def test_launcher_uses_dedicated_project_ports(self) -> None:
         text = START_SERVICES.read_text(encoding="utf-8")
-        self.assertIn("REDIS_PORT=16379", text)
         self.assertIn("BACKEND_PORT=18000", text)
         self.assertIn("FRONTEND_PORT=15173", text)
         self.assertIn("--strictPort", text)
@@ -85,7 +81,7 @@ class PosixStartLauncherTests(unittest.TestCase):
         self.assertIn("listener_matches_started_service", text)
         self.assertIn('printf \'%s\' "$owned_pid" >"$LOG_DIR/$name.pid"', text)
 
-    def test_external_listener_on_redis_port_is_rejected_and_not_stopped(self) -> None:
+    def test_external_listener_on_backend_port_is_rejected_and_not_stopped(self) -> None:
         with tempfile.TemporaryDirectory() as temp_directory:
             root = Path(temp_directory)
             launcher = root / "tools" / "start_services.sh"
@@ -96,10 +92,6 @@ class PosixStartLauncherTests(unittest.TestCase):
             launcher.chmod(0o755)
             stopper.chmod(0o755)
 
-            redis_bin = root / "tools" / "redis" / "redis-server"
-            redis_bin.parent.mkdir(parents=True)
-            redis_bin.touch()
-            redis_bin.chmod(0o755)
             backend_python = root / "backend" / ".venv" / "bin" / "python"
             backend_python.parent.mkdir(parents=True)
             backend_python.touch()
@@ -109,31 +101,14 @@ class PosixStartLauncherTests(unittest.TestCase):
             vite.touch()
             (root / "frontend" / "package.json").write_text("{}\n", encoding="utf-8")
 
-            redis_server = shutil.which("redis-server")
-            external_command = (
-                [
-                    redis_server,
-                    "--port",
-                    str(REDIS_PORT),
-                    "--bind",
-                    "127.0.0.1",
-                    "--save",
-                    "",
-                    "--appendonly",
-                    "no",
-                    "--dir",
-                    str(root),
-                ]
-                if redis_server
-                else [
-                    sys.executable,
-                    "-m",
-                    "http.server",
-                    str(REDIS_PORT),
-                    "--bind",
-                    "127.0.0.1",
-                ]
-            )
+            external_command = [
+                sys.executable,
+                "-m",
+                "http.server",
+                str(BACKEND_PORT),
+                "--bind",
+                "127.0.0.1",
+            ]
             process = subprocess.Popen(
                 external_command,
                 # 即使外部服务恰好从仓库根目录启动，也不能仅凭 cwd 认领。
@@ -143,7 +118,7 @@ class PosixStartLauncherTests(unittest.TestCase):
                 text=True,
             )
             try:
-                wait_for_port(REDIS_PORT, listening=True)
+                wait_for_port(BACKEND_PORT, listening=True)
 
                 start = subprocess.run(
                     ["bash", str(launcher)],
@@ -181,7 +156,7 @@ class PosixStartLauncherTests(unittest.TestCase):
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait(timeout=5)
-                wait_for_port(REDIS_PORT, listening=False)
+                wait_for_port(BACKEND_PORT, listening=False)
 
     def test_backend_start_failure_returns_nonzero_without_success_banner(self) -> None:
         with tempfile.TemporaryDirectory() as temp_directory:
@@ -190,26 +165,6 @@ class PosixStartLauncherTests(unittest.TestCase):
             launcher.parent.mkdir(parents=True)
             shutil.copy2(START_SERVICES, launcher)
             launcher.chmod(0o755)
-
-            # CI 中优先验证系统真实 Redis；仅在开发机未安装 Redis 时使用
-            # Python TCP 替身，使失败传播测试仍可独立运行。
-            if shutil.which("redis-server") is None:
-                redis_bin = root / "tools" / "redis" / "redis-server"
-                redis_bin.parent.mkdir(parents=True)
-                redis_bin.write_text(
-                    """#!/usr/bin/env bash
-port=16379
-while [ "$#" -gt 0 ]; do
-  case "$1" in
-    --port) port="$2"; shift 2 ;;
-    *) shift ;;
-  esac
-done
-exec python3 -m http.server "$port" --bind 127.0.0.1
-""",
-                    encoding="utf-8",
-                )
-                redis_bin.chmod(0o755)
 
             backend_python = root / "backend" / ".venv" / "bin" / "python"
             backend_python.parent.mkdir(parents=True)
@@ -221,28 +176,18 @@ exec python3 -m http.server "$port" --bind 127.0.0.1
             vite.touch()
             (root / "frontend" / "package.json").write_text("{}\n", encoding="utf-8")
 
-            try:
-                result = subprocess.run(
-                    ["bash", str(launcher)],
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    capture_output=True,
-                    timeout=20,
-                    check=False,
-                )
-                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertIn("backend exited before opening port", result.stderr)
-                self.assertNotIn("Frontend: http://", result.stdout)
-            finally:
-                pid_file = root / "logs" / "redis.pid"
-                if pid_file.exists():
-                    pid = int(pid_file.read_text(encoding="utf-8").strip())
-                    try:
-                        os.kill(pid, signal.SIGTERM)
-                    except ProcessLookupError:
-                        pass
-                wait_for_port(REDIS_PORT, listening=False)
+            result = subprocess.run(
+                ["bash", str(launcher)],
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                capture_output=True,
+                timeout=20,
+                check=False,
+            )
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("backend exited before opening port", result.stderr)
+            self.assertNotIn("Frontend: http://", result.stdout)
 
     def test_launcher_has_side_effect_free_dependency_check(self) -> None:
         # 从仓库外的当前目录运行，证明启动器按脚本自身位置定位项目根。
@@ -267,11 +212,6 @@ exec python3 -m http.server "$port" --bind 127.0.0.1
             launcher.parent.mkdir(parents=True)
             shutil.copy2(START_SERVICES, launcher)
             launcher.chmod(0o755)
-
-            redis_bin = root / "tools" / "redis" / "redis-server"
-            redis_bin.parent.mkdir(parents=True)
-            redis_bin.touch()
-            redis_bin.chmod(0o755)
 
             venv_bin = root / "backend" / ".venv" / "bin"
             venv_bin.mkdir(parents=True)

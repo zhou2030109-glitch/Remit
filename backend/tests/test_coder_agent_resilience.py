@@ -88,7 +88,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
             agent.code_interpreter.execute_code.side_effect = execute
             with (
                 patch(
-                    "app.core.agents.coder_agent.redis_manager.publish_message",
+                    "app.core.agents.coder_agent.task_bus.publish_message",
                     new_callable=AsyncMock,
                 ),
                 patch(
@@ -137,7 +137,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
             agent.code_interpreter.execute_code.side_effect = execute
             with (
                 patch(
-                    "app.core.agents.coder_agent.redis_manager.publish_message",
+                    "app.core.agents.coder_agent.task_bus.publish_message",
                     new_callable=AsyncMock,
                 ),
                 patch(
@@ -210,7 +210,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
             ("真实列名：经度、纬度；18行", False, ""),
         ]
         with patch(
-            "app.core.agents.coder_agent.redis_manager.publish_message", new=AsyncMock()
+            "app.core.agents.coder_agent.task_bus.publish_message", new=AsyncMock()
         ):
             await agent.run("读取数据", "eda")
             await agent.run("补全质量报告", "eda")
@@ -249,7 +249,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
             ]
         )
         with patch(
-            "app.core.agents.coder_agent.redis_manager.publish_message", new=AsyncMock()
+            "app.core.agents.coder_agent.task_bus.publish_message", new=AsyncMock()
         ):
             await agent._call_model([])
             await agent._call_model([])
@@ -280,7 +280,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
 
             agent.code_interpreter.execute_code.side_effect = execute
             with patch(
-                "app.core.agents.coder_agent.redis_manager.publish_message",
+                "app.core.agents.coder_agent.task_bus.publish_message",
                 new=AsyncMock(),
             ):
                 result = await agent.run(
@@ -299,7 +299,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
             agent.work_dir = tmp
             agent._chat = AsyncMock(return_value=StandardResponse(content="尚未完成"))
             with patch(
-                "app.core.agents.coder_agent.redis_manager.publish_message",
+                "app.core.agents.coder_agent.task_bus.publish_message",
                 new=AsyncMock(),
             ):
                 result = await agent.run(
@@ -329,7 +329,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
                     )
                 )
                 with patch(
-                    "app.core.agents.coder_agent.redis_manager.publish_message",
+                    "app.core.agents.coder_agent.task_bus.publish_message",
                     new=AsyncMock(),
                 ):
                     with self.assertRaisesRegex(CoderAgentRunError, "连续 3 次"):
@@ -355,7 +355,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
         )
         agent.code_interpreter.execute_code.return_value = ("1", False, "")
         with patch(
-            "app.core.agents.coder_agent.redis_manager.publish_message", new=AsyncMock()
+            "app.core.agents.coder_agent.task_bus.publish_message", new=AsyncMock()
         ):
             result = await agent.run("eda", "eda")
         self.assertEqual(result.code_response, "done")
@@ -405,7 +405,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.core.agents.coder_agent.redis_manager.publish_message",
+                "app.core.agents.coder_agent.task_bus.publish_message",
                 new=AsyncMock(),
             ),
             patch("app.core.agents.coder_agent.asyncio.sleep", new=AsyncMock()),
@@ -433,7 +433,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
         ]
 
         with patch(
-            "app.core.agents.coder_agent.redis_manager.publish_message",
+            "app.core.agents.coder_agent.task_bus.publish_message",
             new=AsyncMock(),
         ):
             result = await agent.run("finish ques1", "ques1")
@@ -450,7 +450,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "app.core.agents.coder_agent.redis_manager.publish_message",
+            "app.core.agents.coder_agent.task_bus.publish_message",
             new=AsyncMock(),
         ):
             first = await agent.run("eda", "eda")
@@ -483,7 +483,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
         ]
 
         with patch(
-            "app.core.agents.coder_agent.redis_manager.publish_message",
+            "app.core.agents.coder_agent.task_bus.publish_message",
             new=AsyncMock(),
         ):
             result = await agent.run("finish ques1", "ques1")
@@ -505,7 +505,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
         agent.code_interpreter.execute_code.return_value = ("ok", False, "")
 
         with patch(
-            "app.core.agents.coder_agent.redis_manager.publish_message",
+            "app.core.agents.coder_agent.task_bus.publish_message",
             new=AsyncMock(),
         ):
             result = await agent.run(
@@ -532,7 +532,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
         agent.code_interpreter.execute_code.return_value = ("ok", False, "")
 
         with patch(
-            "app.core.agents.coder_agent.redis_manager.publish_message",
+            "app.core.agents.coder_agent.task_bus.publish_message",
             new=AsyncMock(),
         ):
             result = await agent.run("solve and persist", "ques1")
@@ -555,7 +555,7 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
 
         agent._chat = AsyncMock(side_effect=finish)
         with patch(
-            "app.core.agents.coder_agent.redis_manager.publish_message",
+            "app.core.agents.coder_agent.task_bus.publish_message",
             new=AsyncMock(),
         ):
             await agent.run("first prompt", "ques1")

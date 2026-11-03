@@ -26,7 +26,6 @@ def main():
     os.chdir(data)
     sys.path.insert(0, str(repo / "backend"))
     os.environ["REMIT_USER_CONFIG_PATH"] = str(data / ".env.test-user")
-    os.environ["REDIS_URL"] = "redis://127.0.0.1:16380/14"
     os.environ["REMIT_MESSAGES_DIR"] = str(data / "logs/messages")
     from app.services import writing_workspace as ws, team_state as team
     from app.core.workflow_checkpoint import WorkflowCheckpoint

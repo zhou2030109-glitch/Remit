@@ -18,19 +18,19 @@ from app.routers.common_router import (
 from app.routers.modeling_router import submit_modeling
 from app.schemas.enums import CompTemplate, FormatOutPut
 from app.schemas.response import SystemMessage, UserMessage
-from app.services.redis_manager import RedisManager
+from app.services.task_bus import TaskBus
 
 
 class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
     async def test_messages_survive_a_new_manager_instance(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            first = RedisManager(messages_dir=Path(tmp))
+            first = TaskBus(messages_dir=Path(tmp))
             await first._save_message_to_file(
                 "20260711-120000-abcd1234",
                 UserMessage(content="问题1必须输出预测值"),
             )
 
-            second = RedisManager(messages_dir=Path(tmp))
+            second = TaskBus(messages_dir=Path(tmp))
             messages = await second.load_task_messages("20260711-120000-abcd1234")
 
             self.assertEqual(len(messages), 1)
@@ -39,7 +39,7 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_task_history_is_built_from_durable_message_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            manager = RedisManager(messages_dir=Path(tmp))
+            manager = TaskBus(messages_dir=Path(tmp))
             task_id = "20260711-120000-abcd1234"
             await manager._save_message_to_file(
                 task_id,
@@ -58,30 +58,24 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(history[0]["status"], "completed")
             self.assertEqual(history[0]["message_count"], 2)
 
-    async def test_delete_task_record_removes_history_and_redis_keys(self) -> None:
+    async def test_delete_task_record_removes_history_and_runtime_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            manager = RedisManager(messages_dir=Path(tmp))
+            manager = TaskBus(messages_dir=Path(tmp))
             task_id = "20260711-120000-abcd1234"
             await manager._save_message_to_file(
                 task_id,
                 UserMessage(content="待删除的历史任务"),
             )
-            redis_client = AsyncMock()
+            await manager.push_user_note(task_id, "插话")
+            await manager.request_cancellation(task_id)
 
-            with patch.object(
-                manager,
-                "get_client",
-                new=AsyncMock(return_value=redis_client),
-            ):
-                deleted = await manager.delete_task_record(task_id)
+            deleted = await manager.delete_task_record(task_id)
 
             self.assertTrue(deleted)
             self.assertFalse((Path(tmp) / f"{task_id}.json").exists())
             self.assertEqual(await manager.list_task_summaries(), [])
-            redis_client.delete.assert_awaited_once_with(
-                f"task_id:{task_id}",
-                f"task_cancel_requested:{task_id}",
-            )
+            self.assertEqual(await manager.drain_user_notes(task_id), [])
+            self.assertFalse(await manager.is_cancellation_requested(task_id))
 
     async def test_delete_task_rejects_running_task(self) -> None:
         task_id = "20260711-120000-abcd1234"
@@ -91,11 +85,11 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "app.routers.common_router.redis_manager.load_task_messages",
+                "app.routers.common_router.task_bus.load_task_messages",
                 new=AsyncMock(return_value=running_messages),
             ),
             patch(
-                "app.routers.common_router.redis_manager.delete_task_record",
+                "app.routers.common_router.task_bus.delete_task_record",
                 new=AsyncMock(),
             ) as delete_record,
         ):
@@ -126,11 +120,11 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
                     work_root,
                 ),
                 patch(
-                    "app.routers.common_router.redis_manager.load_task_messages",
+                    "app.routers.common_router.task_bus.load_task_messages",
                     new=AsyncMock(return_value=completed_messages),
                 ),
                 patch(
-                    "app.routers.common_router.redis_manager.delete_task_record",
+                    "app.routers.common_router.task_bus.delete_task_record",
                     new=AsyncMock(return_value=True),
                 ) as delete_record,
             ):
@@ -162,11 +156,11 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
                     work_root,
                 ),
                 patch(
-                    "app.routers.common_router.redis_manager.list_task_summaries",
+                    "app.routers.common_router.task_bus.list_task_summaries",
                     new=AsyncMock(return_value=summaries),
                 ),
                 patch(
-                    "app.routers.common_router.redis_manager.delete_task_record",
+                    "app.routers.common_router.task_bus.delete_task_record",
                     new=AsyncMock(return_value=True),
                 ) as delete_record,
             ):
@@ -191,12 +185,12 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
         ]
         with (
             patch(
-                "app.routers.common_router.redis_manager.list_task_summaries",
+                "app.routers.common_router.task_bus.list_task_summaries",
                 new=AsyncMock(return_value=summaries),
             ),
             patch("app.routers.common_router._delete_task_work_dir") as delete_work_dir,
             patch(
-                "app.routers.common_router.redis_manager.delete_task_record",
+                "app.routers.common_router.task_bus.delete_task_record",
                 new=AsyncMock(),
             ) as delete_record,
         ):
@@ -209,7 +203,7 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_clear_empty_task_history_succeeds(self) -> None:
         with patch(
-            "app.routers.common_router.redis_manager.list_task_summaries",
+            "app.routers.common_router.task_bus.list_task_summaries",
             new=AsyncMock(return_value=[]),
         ):
             response = await clear_task_history()
@@ -222,11 +216,11 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
         persisted = UserMessage(content="请补充逐样本预测值")
         with (
             patch(
-                "app.routers.common_router.redis_manager.task_exists",
+                "app.routers.common_router.task_bus.task_exists",
                 new=AsyncMock(return_value=True),
             ),
             patch(
-                "app.routers.common_router.redis_manager.publish_message",
+                "app.routers.common_router.task_bus.publish_message",
                 new=AsyncMock(),
             ) as publish,
         ):
@@ -256,11 +250,7 @@ class TaskMessageHistoryTests(unittest.IsolatedAsyncioTestCase):
                 return_value="ignored",
             ),
             patch(
-                "app.routers.modeling_router.redis_manager.set",
-                new=AsyncMock(),
-            ),
-            patch(
-                "app.routers.modeling_router.redis_manager.publish_message",
+                "app.routers.modeling_router.task_bus.publish_message",
                 new=AsyncMock(),
             ) as publish,
         ):

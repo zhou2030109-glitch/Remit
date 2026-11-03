@@ -14,7 +14,7 @@ from app.core.workflow_checkpoint import WorkflowCheckpoint
 from app.routers import project_router, team_router, modeling_router
 from app.schemas.A2A import CoordinatorToModeler
 from app.schemas.request import Problem
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.services.writing_workspace import write_json
 
 
@@ -85,7 +85,7 @@ async def test_research_still_profiles_real_csv_and_resume_does_not_call_model(
     state["questions"] = {"ques1": "核对数据"}
     flow = RemitWorkFlow()
     flow.task_id, flow.work_dir, flow.checkpoint = tmp_path.name, str(tmp_path), cp
-    monkeypatch.setattr(redis_manager, "publish_message", AsyncMock())
+    monkeypatch.setattr(task_bus, "publish_message", AsyncMock())
     llm = SimpleNamespace(
         chat=AsyncMock(side_effect=AssertionError("unexpected model call"))
     )

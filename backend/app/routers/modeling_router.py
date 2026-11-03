@@ -13,7 +13,7 @@ from app.core.workflow_checkpoint import (
 )
 from app.schemas.enums import CompTemplate, FormatOutPut
 from app.utils.log_util import logger
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.services import call_ledger
 from app.services.async_io import run_blocking
 from app.schemas.request import ExecutionBackend, Problem
@@ -403,15 +403,12 @@ async def _schedule_new_task(
     # 继续接受旧客户端的 Markdown 枚举值，但最终交付契约固定为 PDF + LaTeX。
     output_format = FormatOutPut.LaTeX
     try:
-        await redis_manager.set(f"task_id:{task_id}", task_id)
         visible_prompt = problem_text.strip()
         if user_requirements.strip():
             visible_prompt = (
                 f"{visible_prompt}\n\n【额外交付要求】\n{user_requirements.strip()}"
             )
-        await redis_manager.publish_message(
-            task_id, UserMessage(content=visible_prompt)
-        )
+        await task_bus.publish_message(task_id, UserMessage(content=visible_prompt))
         from app.services.work_timing import Span
         from app.services.async_io import run_blocking
 
@@ -421,7 +418,7 @@ async def _schedule_new_task(
         _scheduled_tasks.discard(task_id)
         _pending_cancellations.discard(task_id)
         try:
-            await redis_manager.delete_task_record(task_id)
+            await task_bus.delete_task_record(task_id)
         except Exception as cleanup_error:
             logger.warning(f"清理未入队任务档案失败: {cleanup_error}")
         await _discard_failed_intake(
@@ -563,7 +560,7 @@ async def run_modeling_task_async(
     try:
         if (
             task_id in _pending_cancellations
-            or await redis_manager.is_cancellation_requested(task_id)
+            or await task_bus.is_cancellation_requested(task_id)
         ):
             cancel_event.set()
             task.cancel()
@@ -576,7 +573,7 @@ async def run_modeling_task_async(
             )
 
         # 发送任务开始状态
-        await redis_manager.notify(
+        await task_bus.notify(
             task_id,
             f"任务从节点 {resume_from} 继续处理"
             if resume_from
@@ -592,7 +589,7 @@ async def run_modeling_task_async(
         _auto_resume_counts.pop(task_id, None)
 
         # 发送任务完成状态
-        await redis_manager.notify(
+        await task_bus.notify(
             task_id, "任务处理完成", "success", task_status="completed"
         )
     except WorkflowApprovalRequired as pause:
@@ -610,7 +607,7 @@ async def run_modeling_task_async(
             approval_content = (
                 f"“{approval['node_label']}”已生成可核对产物，等待你的审核"
             )
-        await redis_manager.publish_message(
+        await task_bus.publish_message(
             task_id,
             ApprovalMessage(
                 content=approval_content,
@@ -637,7 +634,7 @@ async def run_modeling_task_async(
             hint = "该节点结果需要人工裁决（HIL 已关闭，已自动挂起）。"
         else:
             hint = "该节点质量门未通过（HIL 已关闭，已自动挂起）。"
-        await redis_manager.notify(
+        await task_bus.notify(
             task_id,
             f"任务挂起等待人工裁决：{approval.get('node_label', approval.get('node_id', ''))}。"
             f"{hint}请在项目页批准、放行或退回以继续。",
@@ -654,7 +651,7 @@ async def run_modeling_task_async(
             type="warning",
             task_status="stopping",
         )
-        await redis_manager.publish_message(task_id, stopped)
+        await task_bus.publish_message(task_id, stopped)
     except Exception as e:
         error_message = _exception_message(e)
         from app.core.llm.errors import ModelStageBudgetExceeded
@@ -682,7 +679,7 @@ async def run_modeling_task_async(
         except (OSError, ValueError):
             logger.warning("错误摘要暂时无法保存；原有检查点保持不变")
         delay_seconds = settings.TASK_AUTO_RESUME_BASE_DELAY_SECONDS * attempt
-        await redis_manager.notify(
+        await task_bus.notify(
             task_id,
             f"{'任务额度暂停' if budget_pause else '任务执行失败'}: {error_message}"
             + (
@@ -726,7 +723,7 @@ async def run_modeling_task_async(
                     retry_delay = None
                     _auto_resume_counts.pop(task_id, None)
                     workflow.mark_status("stopped")
-                    await redis_manager.notify(
+                    await task_bus.notify(
                         task_id, "建模任务已停止", "warning", task_status="stopped"
                     )
         finally:
@@ -734,7 +731,7 @@ async def run_modeling_task_async(
             _scheduled_tasks.discard(task_id)
             _pending_cancellations.discard(task_id)
             try:
-                await redis_manager.clear_cancellation_request(task_id)
+                await task_bus.clear_cancellation_request(task_id)
             except Exception as cleanup_error:
                 logger.warning(f"清理任务取消标记失败: {cleanup_error}")
         if retry_delay is not None:
@@ -793,11 +790,11 @@ async def _auto_resume_after_failure(
     try:
         if (
             task_id in _pending_cancellations
-            or await redis_manager.is_cancellation_requested(task_id)
+            or await task_bus.is_cancellation_requested(task_id)
         ):
             _scheduled_tasks.discard(task_id)
             return
-        await redis_manager.notify(
+        await task_bus.notify(
             task_id, "自动续跑开始：从检查点恢复未完成节点", task_status="running"
         )
         await run_modeling_task_async(
@@ -987,8 +984,8 @@ async def submit_approval(
             status_code=409, detail="任务原始配置损坏，无法继续"
         ) from exc
 
-    await redis_manager.clear_cancellation_request(task_id)
-    await redis_manager.notify(
+    await task_bus.clear_cancellation_request(task_id)
+    await task_bus.notify(
         task_id,
         decision_message,
         "success" if request.decision == "approve" else "warning",
@@ -1022,9 +1019,9 @@ async def submit_approval(
 async def get_resume_options(task_id: str):
     """返回停止任务当前可安全选择的续跑节点。"""
     checkpoint, state = _load_workflow_checkpoint(task_id)
-    messages = await redis_manager.load_task_messages(task_id)
+    messages = await task_bus.load_task_messages(task_id)
     durable_status = (
-        redis_manager.task_status_from_messages(messages) if messages else "unknown"
+        task_bus.task_status_from_messages(messages) if messages else "unknown"
     )
     status = str(state.get("status", durable_status))
     if durable_status == "stopped" and status in {"running", "stopping"}:
@@ -1115,7 +1112,7 @@ async def resume_task(
         ) from exc
 
     # Reserve scheduling before the first await; double clicks cannot queue two
-    # workers while Redis or the durable budget transaction is pending.
+    # workers while the durable budget transaction is pending.
     _scheduled_tasks.add(task_id)
     try:
         extension = request.execution_budget_extension
@@ -1164,7 +1161,7 @@ async def resume_task(
                     await run_blocking(budget.remaining)
             elif extension:
                 raise HTTPException(409, "任务执行额度不可用")
-        await redis_manager.clear_cancellation_request(task_id)
+        await task_bus.clear_cancellation_request(task_id)
         _auto_resume_counts.pop(task_id, None)
         if model_extension and not await run_blocking(
             model_budget.mark_resume_scheduled, model_extension.request_id
@@ -1232,7 +1229,7 @@ async def cancel_task(task_id: str):
         except HTTPException:
             pass
     try:
-        await redis_manager.request_cancellation(task_id)
+        await task_bus.request_cancellation(task_id)
     except Exception as exc:
         logger.warning(f"保存取消标记失败，本机运行任务已直接中断: {exc}")
 
@@ -1252,7 +1249,7 @@ async def cancel_task(task_id: str):
         checkpoint, state = _load_workflow_checkpoint(task_id)
         if state.get("status") == "awaiting_approval":
             checkpoint.mark_status("stopped")
-            await redis_manager.notify(
+            await task_bus.notify(
                 task_id, "任务已停止", "warning", task_status="stopped"
             )
             return CancelTaskResponse(
@@ -1262,9 +1259,9 @@ async def cancel_task(task_id: str):
     except HTTPException:
         pass
 
-    messages = await redis_manager.load_task_messages(task_id)
-    if messages and redis_manager.task_status_from_messages(messages) == "running":
-        await redis_manager.notify(
+    messages = await task_bus.load_task_messages(task_id)
+    if messages and task_bus.task_status_from_messages(messages) == "running":
+        await task_bus.notify(
             task_id, "任务已停止（运行进程已不存在）", "warning", task_status="stopped"
         )
         try:

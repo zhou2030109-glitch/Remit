@@ -60,9 +60,9 @@ async def verify(root: Path, *, with_latex: bool = False) -> dict:
         interpreter = LocalCodeInterpreter(
             "portable-check", str(work), NotebookSerializer(str(work)), timeout=45
         )
-        # Keep test events local; never contact the user's Redis or active workflow.
+        # Keep test events local; never touch the user's message archive or active workflow.
         with patch(
-            "app.tools.local_interpreter.redis_manager.publish_message", new=AsyncMock()
+            "app.tools.local_interpreter.task_bus.publish_message", new=AsyncMock()
         ):
             try:
                 await interpreter.initialize()

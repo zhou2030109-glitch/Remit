@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator
 
 from app.config.setting import settings
 from app.schemas.response import InterpreterMessage, OutputItem
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.tools.notebook_serializer import NotebookSerializer
 from app.utils.log_util import logger
 
@@ -67,11 +67,11 @@ class BaseCodeInterpreter(abc.ABC):
     async def _push_to_websocket(
         self, content_to_display: list[OutputItem] | None
     ) -> None:
-        """把执行结果经 Redis 广播到前端。"""
+        """把执行结果经任务总线广播到前端。"""
         logger.info("执行结果已推送到WebSocket")
         message = InterpreterMessage(output=content_to_display)
         logger.debug(f"发送消息: {message.model_dump_json()}")
-        await redis_manager.publish_message(self.task_id, message)
+        await task_bus.publish_message(self.task_id, message)
 
     def add_section(self, section_name: str) -> None:
         """切换并确保小节容器存在。"""
@@ -104,7 +104,7 @@ class BaseCodeInterpreter(abc.ABC):
             await asyncio.sleep(interval)
             elapsed = int(time.monotonic() - started)
             try:
-                await redis_manager.notify(
+                await task_bus.notify(
                     self.task_id, f"{label}仍在运行（已耗时 {elapsed} 秒）", "info"
                 )
             except Exception as exc:

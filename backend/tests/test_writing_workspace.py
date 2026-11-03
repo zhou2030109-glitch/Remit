@@ -174,7 +174,7 @@ def test_writing_routes_block_unfinished_results_and_version_conflicts(writing_c
 
 def test_writer_failure_does_not_modify_modeling_checkpoint(writing_client):
     from app.schemas.response import SystemMessage
-    from app.services.redis_manager import redis_manager
+    from app.services.task_bus import task_bus
 
     _, task_root = writing_client
     root = workspace.ensure_workspace(task_root)
@@ -186,7 +186,7 @@ def test_writer_failure_does_not_modify_modeling_checkpoint(writing_client):
     before = (task_root / "workflow_state.json").read_bytes()
 
     async def failing_writer(*args, **kwargs):
-        await redis_manager.publish_message(
+        await task_bus.publish_message(
             "paper-test", SystemMessage(content="writer failure", type="error")
         )
         raise RuntimeError("model offline")
@@ -206,7 +206,7 @@ def test_writer_failure_does_not_modify_modeling_checkpoint(writing_client):
     )
     assert (task_root / "workflow_state.json").read_bytes() == before
     assert list((root / ".drafts").glob("*/events.jsonl"))
-    assert not redis_manager.archive.exists("paper-test")
+    assert not task_bus.archive.exists("paper-test")
 
 
 def test_writer_resume_reuses_validated_sections(writing_client):

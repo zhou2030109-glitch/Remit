@@ -512,7 +512,7 @@ class ProblemAnalysisTests(unittest.IsolatedAsyncioTestCase):
 
             with (
                 patch(
-                    "app.core.workflow.redis_manager.publish_message",
+                    "app.core.workflow.task_bus.publish_message",
                     new=AsyncMock(),
                 ),
                 patch.object(settings, "HIL_ENABLED", True),
@@ -656,7 +656,7 @@ class ProblemAnalysisTests(unittest.IsolatedAsyncioTestCase):
             coordinator.run = AsyncMock(return_value=response)
 
             with patch(
-                "app.core.workflow.redis_manager.publish_message",
+                "app.core.workflow.task_bus.publish_message",
                 new=AsyncMock(),
             ):
                 actual = await workflow._coordinator_node(

@@ -116,7 +116,7 @@ class MatlabInterpreterTests(unittest.IsolatedAsyncioTestCase):
                     new=AsyncMock(),
                 ) as python_initialize,
                 patch(
-                    "app.tools.interpreter_factory.redis_manager.publish_message",
+                    "app.tools.interpreter_factory.task_bus.publish_message",
                     new=AsyncMock(),
                 ),
             ):
@@ -207,7 +207,7 @@ class MatlabInterpreterTests(unittest.IsolatedAsyncioTestCase):
 
             with (
                 patch(
-                    "app.tools.matlab_interpreter.redis_manager.publish_message",
+                    "app.tools.matlab_interpreter.task_bus.publish_message",
                     new=AsyncMock(),
                 ),
                 patch.object(
@@ -244,7 +244,7 @@ class MatlabInterpreterTests(unittest.IsolatedAsyncioTestCase):
             )
             try:
                 with patch(
-                    "app.tools.matlab_interpreter.redis_manager.publish_message",
+                    "app.tools.matlab_interpreter.task_bus.publish_message",
                     new=AsyncMock(),
                 ):
                     await interpreter.initialize()

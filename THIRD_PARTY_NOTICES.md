@@ -9,8 +9,7 @@ third-party software.
 Desktop builds retain Python package metadata and license files in the bundled
 site-packages, plus a package inventory under `licenses/`. TinyTeX retains
 `LICENSE.TL`, `LICENSE.CTAN` and installed package documentation. Fandol font
-license documentation is also copied to `licenses/fandol/`. Redis for macOS is
-built from the pinned upstream source archive and retains its BSD license.
+license documentation is also copied to `licenses/fandol/`.
 The Windows installer distributes Microsoft's original signed Visual C++
 Redistributable installer under Microsoft's redistribution terms; it is not
 covered by Remit's MIT license. See `tools/desktop-dependencies.json` for source
@@ -22,13 +21,6 @@ Python and JavaScript dependencies are declared in `backend/pyproject.toml`,
 Each dependency remains subject to its own license. Generated or adapted UI
 primitives under `frontend/src/components/ui/` follow conventions from the
 open-source Vue UI ecosystem and use the declared Reka UI packages.
-
-## Bundled Windows runtime files
-
-The Windows distribution includes Redis-compatible binaries and runtime
-libraries under `tools/redis/`. Their notices and license texts are preserved
-under `tools/redis/LICENCES/`, including Redis, OpenSSL, MSYS2 runtime, and GCC
-runtime terms. Those files are not relicensed under Remit's MIT License.
 
 ## Historical source provenance
 

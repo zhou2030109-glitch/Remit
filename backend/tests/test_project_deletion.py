@@ -10,7 +10,7 @@ from httpx import ASGITransport, AsyncClient
 from app.routers import project_router as projects, team_router as team_api
 from app.routers import modeling_router, writing_router
 from app.services import team_state as team
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.services.writing_workspace import write_json
 
 
@@ -32,9 +32,9 @@ def project(tmp_path, monkeypatch):
     team_api._io_locks.clear()
     team_api._locks.clear()
     monkeypatch.setattr(
-        redis_manager, "delete_task_record", AsyncMock(return_value=False)
+        task_bus, "delete_task_record", AsyncMock(return_value=False)
     )
-    monkeypatch.setattr(redis_manager, "load_task_messages", AsyncMock(return_value=[]))
+    monkeypatch.setattr(task_bus, "load_task_messages", AsyncMock(return_value=[]))
     yield root
     modeling_router._scheduled_tasks.discard(root.name)
     writing_router._compiling.discard(root.name)
@@ -54,8 +54,8 @@ async def test_delete_archived_chat_without_legacy_messages(project):
     assert not project.exists()
     assert (sibling / "keep.txt").read_text() == "keep"
     assert not await projects.projects()
-    redis_manager.delete_task_record.assert_awaited_once_with(project.name)
-    redis_manager.load_task_messages.assert_not_called()
+    task_bus.delete_task_record.assert_awaited_once_with(project.name)
+    task_bus.load_task_messages.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -76,7 +76,7 @@ async def test_delete_requires_explicit_confirmation_and_archive(project):
         )
         assert response.status_code == 409
     assert (project / "input.csv").exists()
-    redis_manager.delete_task_record.assert_not_called()
+    task_bus.delete_task_record.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -96,7 +96,7 @@ async def test_delete_refuses_busy_project(project, busy):
         )
     assert exc.value.status_code == 409
     assert (project / ".team.sqlite3").is_file()
-    redis_manager.delete_task_record.assert_not_called()
+    task_bus.delete_task_record.assert_not_called()
 
 
 @pytest.mark.anyio

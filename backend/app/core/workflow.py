@@ -44,7 +44,7 @@ from app.schemas.A2A import (
 from app.schemas.request import Problem
 from app.schemas.enums import CompTemplate
 from app.schemas.response import SystemMessage
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.tools.base_interpreter import BaseCodeInterpreter
 from app.tools.interpreter_factory import create_interpreter
 from app.tools.notebook_serializer import NotebookSerializer
@@ -187,7 +187,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
                     critic_llm,
                 )
             ):
-                await redis_manager.notify(
+                await task_bus.notify(
                     self.task_id,
                     "模型评审组与主建模手使用完全相同的模型接入点，"
                     "无法提供独立性或故障隔离，本次已自动跳过额外评审调用。",
@@ -360,7 +360,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
             await asyncio.to_thread(sync_results, Path(self.work_dir), state)
             await self._complete_node(state, "sync_writing")
             self.checkpoint.mark_status("completed")
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id,
                 "建模与计算已完成，写作素材已交接。论文正文尚未生成，可在论文区启动墨墨撰写初稿。",
                 "success",
@@ -412,7 +412,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
             raise RuntimeError("workflow checkpoint is not initialized")
         try:
             message = build_progress_message(self.task_id, self.checkpoint, state)
-            await redis_manager.publish_message(self.task_id, message)
+            await task_bus.publish_message(self.task_id, message)
         except Exception as exc:
             logger.warning(f"进度推送失败: {exc}")
 
@@ -581,7 +581,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
             raise RuntimeError("workflow checkpoint is not initialized")
         await self._start_node(state, "coordinator")
         opening_notice = SystemMessage(content="正在梳理题意并建立问题结构…")
-        await redis_manager.publish_message(self.task_id, opening_notice)
+        await task_bus.publish_message(self.task_id, opening_notice)
         await self._check_cancelled()
         try:
             cumulative_feedback = self.checkpoint.cumulative_revision_feedback(
@@ -616,7 +616,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
         state["coordinator_response"] = response.model_dump(mode="json")
         state.pop("previous_coordinator_response", None)
         await self._complete_node(state, "coordinator")
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id, "原题提取与初步结构化理解完成，开始扫描附件和文献"
         )
         return response
@@ -636,7 +636,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
         if self.checkpoint is None:
             raise RuntimeError("workflow checkpoint is not initialized")
         await self._start_node(state, "modeler")
-        await redis_manager.notify(self.task_id, "建模手开始建模ing...")
+        await task_bus.notify(self.task_id, "建模手开始建模ing...")
         await self._check_cancelled()
         revision_feedback = self.checkpoint.consume_revision_feedback(state, "modeler")
         cumulative_feedback = self.checkpoint.cumulative_revision_feedback(
@@ -712,7 +712,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
         if model_council is None:
             response = await modeler_agent.run(coordinator_response)
         else:
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id, "模型评审组已启动：主建模与独立候选探索并行进行"
             )
             cached_primary = state.get("modeler_primary_response")
@@ -720,7 +720,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
             if cached_primary and cached_scout:
                 primary_response = ModelerToCoder.model_validate(cached_primary)
                 scout_proposal = ModelScoutProposal.model_validate(cached_scout)
-                await redis_manager.notify(
+                await task_bus.notify(
                     self.task_id, "已恢复主建模与独立候选探索的中间成果，继续模型盲审"
                 )
             else:
@@ -771,7 +771,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
             cached_council = state.get("model_council")
             if cached_council:
                 council_result = ModelCouncilResult.model_validate(cached_council)
-                await redis_manager.notify(
+                await task_bus.notify(
                     self.task_id, "已恢复模型评审组结论，继续主建模综合"
                 )
             else:
@@ -956,7 +956,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
         self.questions = refined.questions
         self.ques_count = refined.ques_count
         await self._complete_node(state, "analysis")
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id,
             analysis_outcome["summary"],
             "success" if analysis_outcome["status"] == "completed" else "warning",
@@ -1040,7 +1040,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
             "literature_enabled", True
         )
         revision_feedback = self.checkpoint.consume_revision_feedback(state, "research")
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id,
             "开始数据侦察与文献调研：先摸清数据底细和领域方法，再定方案"
             if literature_enabled
@@ -1087,7 +1087,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
         card_count = sum(len(items) for items in method_cards.values())
         fulltext_stats = literature_review.get("fulltext_stats") or {}
         full_read = int(fulltext_stats.get("succeeded", 0) or 0)
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id,
             f"调研结果：画像 {profiled_files} 个数据文件，"
             + (
@@ -1110,7 +1110,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
 
     async def _initialize_interpreter(self, state: dict[str, Any]) -> None:
         """为待执行的求解节点创建新的本地代码环境。"""
-        await redis_manager.notify(self.task_id, "正在创建代码沙盒环境")
+        await task_bus.notify(self.task_id, "正在创建代码沙盒环境")
         notebook_serializer = NotebookSerializer(work_dir=self.work_dir)
         problem_data = state.get("problem")
         preferred_backend = (
@@ -1133,7 +1133,7 @@ class RemitWorkFlow(PilotNodeMixin, SolutionNodeMixin, WritingNodeMixin, WorkFlo
             "name": self.code_interpreter.backend_name,
         }
         self.checkpoint.save(state)
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id, f"计算环境创建完成：{self.code_interpreter.backend_name}"
         )
 

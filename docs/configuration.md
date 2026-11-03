@@ -166,12 +166,10 @@ VISION_MAX_TOKENS=8192
 ## 本地服务
 
 ```dotenv
-REDIS_URL=redis://localhost:16379/0
 CORS_ALLOW_ORIGINS=http://localhost:15173,http://127.0.0.1:15173
 SERVER_HOST=http://localhost:18000
 ```
 
-Docker 环境中的 Redis 地址应使用 `redis://redis:6379/0`。
 
 ## 附件上传限制
 

@@ -1,4 +1,4 @@
-"""任务实时通道：Redis pub/sub → WebSocket 转发。"""
+"""任务实时通道：进程内任务总线 → WebSocket 转发。"""
 
 import asyncio
 import json
@@ -8,7 +8,7 @@ from starlette.websockets import WebSocketState
 
 from app.schemas.response import SystemMessage
 from app.routers.dependencies import websocket_task_id
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.services.ws_manager import ws_manager
 from app.utils.log_util import logger
 
@@ -69,8 +69,8 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str) -> None:
         return
 
     logger.info(f"WebSocket 尝试连接 task_id: {safe_task_id}")
-    # 持久化消息档案在即视为有效任务；重启后 Redis 临时键可能已消失
-    if not await redis_manager.task_exists(safe_task_id):
+    # 持久化消息档案在即视为有效任务
+    if not await task_bus.task_exists(safe_task_id):
         logger.warning(f"Task not found: {safe_task_id}")
         await websocket.close(code=1008, reason="Task not found")
         return
@@ -85,14 +85,13 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str) -> None:
     await ws_manager.connect(websocket)
     pubsub = None
     watcher = asyncio.create_task(_watch_client(websocket))
-    channel = f"task:{safe_task_id}:messages"
     logger.info(f"WebSocket connected for task: {safe_task_id}")
 
     try:
-        # 先订阅再读取档案，历史查询期间的消息会被 Redis 缓冲。
-        # Redis 暂时离线时，持久化补偿仍可送达审批和结束事件。
+        # 先订阅再读取档案，历史查询期间的消息会在订阅队列中缓冲。
+        # 订阅失败时，持久化补偿仍可送达审批和结束事件。
         try:
-            pubsub = await redis_manager.subscribe_to_task(safe_task_id)
+            pubsub = await task_bus.subscribe_to_task(safe_task_id)
         except Exception as exc:
             logger.warning(f"实时订阅失败，使用持久化补偿: {exc}")
         next_replay = 0.0
@@ -108,7 +107,7 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str) -> None:
             now = asyncio.get_running_loop().time()
             if now >= next_replay:
                 while True:
-                    history = await redis_manager.load_task_messages(
+                    history = await task_bus.load_task_messages(
                         safe_task_id, after, 200
                     )
                     for payload in history:
@@ -120,7 +119,7 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str) -> None:
                 next_replay = now + 1.0
                 if pubsub is None:
                     try:
-                        pubsub = await redis_manager.subscribe_to_task(safe_task_id)
+                        pubsub = await task_bus.subscribe_to_task(safe_task_id)
                     except Exception:
                         pass
 
@@ -173,18 +172,7 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str) -> None:
         if not watcher.done():
             watcher.cancel()
         await asyncio.gather(watcher, return_exceptions=True)
-        try:
-            if pubsub is not None:
-                await pubsub.unsubscribe(channel)
-        except Exception as exc:
-            logger.warning(f"WebSocket Redis 退订失败 task_id={safe_task_id}: {exc}")
-        try:
-            # unsubscribe 不会把 pubsub 专用连接还给连接池，需要显式关闭
-            if pubsub is not None:
-                await pubsub.aclose()
-        except Exception as exc:
-            logger.warning(
-                f"WebSocket Redis 连接关闭失败 task_id={safe_task_id}: {exc}"
-            )
+        if pubsub is not None:
+            await pubsub.aclose()
         ws_manager.disconnect(websocket)
         logger.info(f"WebSocket connection closed for task: {safe_task_id}")

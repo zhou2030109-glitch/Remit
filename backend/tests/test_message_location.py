@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 from app.services.message_archive import MessageArchive
-from app.services.redis_manager import RedisManager
+from app.services.task_bus import TaskBus
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ def test_v1_upgrade_preserves_committed_wal_legacy_json_and_event_cursors(
         launcher.prepare_user_data()
     destination = launcher.DATA_DIR / "logs/messages"
     monkeypatch.setenv("REMIT_MESSAGES_DIR", str(destination))
-    manager = RedisManager()
+    manager = TaskBus()
     assert manager.messages_dir == destination
     messages = manager.archive.load("fixture")
     assert [row["sequence"] for row in messages] == [first, second]
@@ -92,7 +92,7 @@ def test_copy_failure_preserves_source_and_does_not_mark_success(launcher, monke
 
 def test_explicit_test_archive_overrides_environment(tmp_path, monkeypatch):
     monkeypatch.setenv("REMIT_MESSAGES_DIR", str(tmp_path / "configured"))
-    manager = RedisManager(tmp_path / "isolated")
+    manager = TaskBus(tmp_path / "isolated")
     assert manager.messages_dir == tmp_path / "isolated"
     assert not (tmp_path / "configured").exists()
 

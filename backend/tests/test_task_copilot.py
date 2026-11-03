@@ -31,17 +31,17 @@ class TaskCopilotTests(unittest.IsolatedAsyncioTestCase):
             with (
                 patch.object(common_router, "TASK_WORK_DIR_ROOT", Path(tmp)),
                 patch.object(
-                    common_router.redis_manager,
+                    common_router.task_bus,
                     "task_exists",
                     new=AsyncMock(return_value=True),
                 ),
                 patch.object(
-                    common_router.redis_manager,
+                    common_router.task_bus,
                     "load_task_messages",
                     new=AsyncMock(return_value=[]),
                 ),
                 patch.object(
-                    common_router.redis_manager,
+                    common_router.task_bus,
                     "publish_message",
                     new=AsyncMock(),
                 ) as publish,

@@ -51,7 +51,7 @@ def runtime_info() -> dict:
 
 async def local_check() -> dict:
     """真实运行固定检查代码；不读用户项目，不调用模型。"""
-    from app.services.redis_manager import redis_manager
+    from app.services.task_bus import task_bus
 
     started = time.monotonic()
     checks = []
@@ -83,16 +83,18 @@ async def local_check() -> dict:
                 }
             )
         try:
-            healthy, _ = await asyncio.wait_for(redis_manager.health(1.5), 4)
+            healthy, _ = await asyncio.wait_for(task_bus.health(1.5), 4)
         except (TimeoutError, OSError):
             healthy = False
         checks.append(
             {
-                "id": "redis",
+                "id": "task_bus",
                 "label": "任务服务",
                 "required": True,
                 "status": "passed" if healthy else "failed",
-                "detail": "" if healthy else "Redis 不可用，请重新启动本地服务。",
+                "detail": ""
+                if healthy
+                else "任务消息档案不可读写，请检查数据目录后重新启动。",
             }
         )
         worker = Path(__file__).with_name("runtime_check_worker.py")

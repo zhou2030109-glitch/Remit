@@ -30,7 +30,7 @@ from app.schemas.A2A import (
 )
 from app.schemas.request import Problem
 from app.schemas.enums import CompTemplate
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.tools.openalex_scholar import OpenAlexScholar
 from app.utils.log_util import logger
 from app.utils.paper_polish import (
@@ -87,12 +87,12 @@ class WritingNodeMixin:
             raise RuntimeError("workflow checkpoint is not initialized")
         await self._start_node(state, f"write:{pending_write[0][0]}")
         await self._check_cancelled()
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id, f"论文手开始并行撰写 {len(pending_write)} 个结构章节"
         )
 
         # 插话统一广播到全部章节：并行克隆各自 drain 会被随机一章独占
-        user_notes = await redis_manager.drain_user_notes(self.task_id)
+        user_notes = await task_bus.drain_user_notes(self.task_id)
         note_block = (
             "\n\n【用户实时插话，全部章节都必须遵循】\n"
             + "\n".join(f"- {note}" for note in user_notes)
@@ -133,7 +133,7 @@ class WritingNodeMixin:
             )
             retry_prompt = prompts[key]
             if writer_response is None:
-                await redis_manager.notify(
+                await task_bus.notify(
                     self.task_id,
                     f"{key} 章节并行生成失败，转入串行重写: {outcome}",
                     "warning",
@@ -159,7 +159,7 @@ class WritingNodeMixin:
                     writer_response = None
                     if writer_attempt >= 2:
                         break
-                    await redis_manager.notify(
+                    await task_bus.notify(
                         self.task_id,
                         f"{key} 章节未通过门禁，写作手返修: {error}",
                         "warning",
@@ -181,7 +181,7 @@ class WritingNodeMixin:
         if failed_chapters:
             failed_keys = "、".join(key for key, _ in failed_chapters)
             first_key, first_error = failed_chapters[0]
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id,
                 f"章节 {failed_keys} 连续 2 次未通过门禁，"
                 f"任务已挂起等待人工处理；其余章节已完成并保留。",
@@ -255,7 +255,7 @@ class WritingNodeMixin:
             logger.warning(f"终稿评审降级跳过: {exc}")
             return None
         if not review:
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id,
                 "终稿评审未能完成，跳过评委复审直接进入最终检查",
                 "warning",
@@ -276,7 +276,7 @@ class WritingNodeMixin:
                 ("innovation", "创新"),
             )
         )
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id,
             f"评委复审完成：总分 {review['overall']:.0f}/10（{score_line}）。"
             + (
@@ -360,7 +360,7 @@ class WritingNodeMixin:
                             f"{key} 重写稿丢失原稿标题 {heading}"
                         )
             except Exception as exc:
-                await redis_manager.notify(
+                await task_bus.notify(
                     self.task_id,
                     f"章节 {key} 定向重写未通过校验，保留原稿：{exc}",
                     "warning",
@@ -402,7 +402,7 @@ class WritingNodeMixin:
         if revision_feedback:
             # finalize 是确定性合并检查，无法按意见自动修改内容；
             # 明确告知而不是静默吞掉意见。
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id,
                 "最终合并节点无法按退回意见自动修改论文内容，"
                 f"意见仅作记录：{revision_feedback}\n"
@@ -446,7 +446,7 @@ class WritingNodeMixin:
                     node for node in state.get(field, []) if node != "finalize"
                 ]
             self.checkpoint.save(state)
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id,
                 f"最终论文未通过硬门禁，任务已挂起等待人工处理：{error}",
                 "error",
@@ -462,7 +462,7 @@ class WritingNodeMixin:
                 allow_incomplete=True,
             )
         await self._complete_node(state, "finalize")
-        await redis_manager.notify(
+        await task_bus.notify(
             self.task_id,
             f"整篇论文通过最终硬门禁并完成两次 LaTeX 编译："
             f"{delivery.tex_path.name}、{delivery.pdf_path.name} "

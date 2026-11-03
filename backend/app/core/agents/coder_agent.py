@@ -30,7 +30,7 @@ from app.core.structured_output import (
 )
 from app.schemas.A2A import CoderToWriter
 from app.schemas.response import InterpreterMessage
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.services import call_ledger
 from app.services.async_io import run_blocking
 from app.tools.base_interpreter import BaseCodeInterpreter
@@ -412,7 +412,7 @@ class CoderAgent(Agent):
             )
 
     async def _notify(self, content: str, level: str) -> None:
-        await redis_manager.notify(self.task_id, content, level)
+        await task_bus.notify(self.task_id, content, level)
 
     async def _call_model(
         self, tools: list[dict], tool_choice: str = "auto", *, purpose="normal_work"
@@ -597,7 +597,7 @@ class CoderAgent(Agent):
         await self._notify(f"代码手调用{tool_call.name}工具", "info")
 
         self._last_code = code
-        await redis_manager.publish_message(
+        await task_bus.publish_message(
             self.task_id,
             InterpreterMessage(
                 input={

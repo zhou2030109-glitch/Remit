@@ -2,18 +2,6 @@
 name: remit-release
 
 services:
-  redis:
-    image: redis:7.4-alpine
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    restart: unless-stopped
-
   remit:
     image: ${REMIT_IMAGE:-remit:2.0.1}
     build:
@@ -25,7 +13,6 @@ services:
     ports:
       - "127.0.0.1:${REMIT_PORT:-18000}:8000"
     environment:
-      REDIS_URL: redis://redis:6379/0
       SERVER_HOST: http://localhost:${REMIT_PORT:-18000}
       REMIT_USER_CONFIG_PATH: /app/config/.env.user
       CODE_EXECUTION_BACKEND: python
@@ -35,11 +22,8 @@ services:
       - remit_config:/app/config
       - remit_project:/app/backend/project
       - remit_logs:/app/backend/logs
-    depends_on:
-      redis:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import json,urllib.request; s=json.load(urllib.request.urlopen('http://127.0.0.1:8000/status',timeout=3)); raise SystemExit(0 if s['redis']['status']=='running' else 1)"]
+      test: ["CMD", "python", "-c", "import json,urllib.request; s=json.load(urllib.request.urlopen('http://127.0.0.1:8000/status',timeout=3)); raise SystemExit(0 if s['task_bus']['status']=='running' else 1)"]
       interval: 15s
       timeout: 5s
       start_period: 60s
@@ -47,7 +31,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  redis_data:
   remit_config:
   remit_project:
   remit_logs:

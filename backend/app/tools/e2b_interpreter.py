@@ -19,7 +19,7 @@ from app.schemas.response import (
     StdErrModel,
     StdOutModel,
 )
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.tools.base_interpreter import BaseCodeInterpreter
 from app.tools.notebook_serializer import NotebookSerializer
 from app.utils.file_types import is_sandbox_upload_file, input_filenames
@@ -126,9 +126,9 @@ class E2BCodeInterpreter(BaseCodeInterpreter):
         logger.info(f"执行代码: {code}")
         self.notebook_serializer.add_code_cell_to_notebook(code)
 
-        await redis_manager.notify(self.task_id, "开始执行代码")
+        await task_bus.notify(self.task_id, "开始执行代码")
         execution = await self.sbx.run_code(code)
-        await redis_manager.notify(self.task_id, "代码执行完成")
+        await task_bus.notify(self.task_id, "代码执行完成")
 
         display: list[OutputItem] = []
         failed = False

@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=4 \
-    CMD python -c "import json,urllib.request; s=json.load(urllib.request.urlopen('http://127.0.0.1:8000/status',timeout=3)); raise SystemExit(0 if s['redis']['status']=='running' else 1)"
+    CMD python -c "import json,urllib.request; s=json.load(urllib.request.urlopen('http://127.0.0.1:8000/status',timeout=3)); raise SystemExit(0 if s['task_bus']['status']=='running' else 1)"
 
 ENV PATH="/app/.venv/bin:$PATH"
 

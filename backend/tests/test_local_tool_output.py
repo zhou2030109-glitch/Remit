@@ -9,7 +9,7 @@ from app.tools.notebook_serializer import NotebookSerializer
 
 def interpreter_with_marks(tmp_path, monkeypatch, marks):
     monkeypatch.setattr(
-        "app.tools.local_interpreter.redis_manager.publish_message", AsyncMock()
+        "app.tools.local_interpreter.task_bus.publish_message", AsyncMock()
     )
     interpreter = LocalCodeInterpreter(
         "tool-output", str(tmp_path), NotebookSerializer(str(tmp_path))

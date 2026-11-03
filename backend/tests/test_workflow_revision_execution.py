@@ -128,7 +128,7 @@ class WorkflowRevisionExecutionTests(unittest.IsolatedAsyncioTestCase):
             with (
                 patch.object(settings, "HIL_ENABLED", False),
                 patch.object(
-                    workflow_module.redis_manager, "publish_message", new=AsyncMock()
+                    workflow_module.task_bus, "publish_message", new=AsyncMock()
                 ),
             ):
                 with self.assertRaises(ModelStageBudgetExceeded):
@@ -160,7 +160,7 @@ class WorkflowRevisionExecutionTests(unittest.IsolatedAsyncioTestCase):
             patch.object(workflow, "_check_cancelled", new=AsyncMock()),
             patch.object(workflow_module, "publish_activity", new=AsyncMock()),
             patch.object(
-                workflow_module.redis_manager, "publish_message", new=AsyncMock()
+                workflow_module.task_bus, "publish_message", new=AsyncMock()
             ),
         ):
             with self.assertRaises(NonRetryableLLMError):
@@ -251,7 +251,7 @@ class WorkflowRevisionExecutionTests(unittest.IsolatedAsyncioTestCase):
                 patch.object(settings, "HIL_ENABLED", True),
                 patch.object(settings, "HIL_CHECKPOINTS", {"code_review": True}),
                 patch.object(
-                    workflow_module.redis_manager, "publish_message", new=AsyncMock()
+                    workflow_module.task_bus, "publish_message", new=AsyncMock()
                 ),
                 patch.object(workflow_solution, "validate_writer_section"),
             ):
@@ -439,7 +439,7 @@ class WorkflowRevisionExecutionTests(unittest.IsolatedAsyncioTestCase):
             with (
                 patch.object(settings, "HIL_ENABLED", False),
                 patch.object(
-                    workflow_module.redis_manager, "publish_message", new=AsyncMock()
+                    workflow_module.task_bus, "publish_message", new=AsyncMock()
                 ),
                 patch.object(workflow_solution, "validate_writer_section"),
             ):
@@ -575,7 +575,7 @@ class WorkflowRevisionExecutionTests(unittest.IsolatedAsyncioTestCase):
                 patch.object(workflow_module, "LLMFactory") as factory,
                 patch.object(workflow_module, "ModelerAgent", return_value=modeler),
                 patch.object(
-                    workflow_module.redis_manager, "publish_message", new=AsyncMock()
+                    workflow_module.task_bus, "publish_message", new=AsyncMock()
                 ),
                 patch.object(
                     workflow,

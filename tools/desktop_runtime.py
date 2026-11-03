@@ -7,7 +7,6 @@ import json
 import logging
 import os
 from pathlib import Path
-import secrets
 import signal
 import socket
 import subprocess
@@ -40,7 +39,7 @@ def tex_directory(root: Path = ROOT) -> Path:
 
 def environment(data: Path, root: Path = ROOT) -> dict[str, str]:
     """Create relocated kernel/cache paths without touching the app bundle."""
-    for name in ("project/work_dir", "logs", "cache", "redis", "jupyter/kernels/python3"):
+    for name in ("project/work_dir", "logs", "cache", "jupyter/kernels/python3"):
         (data / name).mkdir(parents=True, exist_ok=True)
     python = python_executable(root)
     kernel = data / "jupyter/kernels/python3/kernel.json"
@@ -101,8 +100,7 @@ def check_files() -> dict:
     required = [python_executable(), ROOT / "backend/app/main.py",
                 ROOT / "frontend/dist/index.html", ROOT / "assets/remit-m-icon.png",
                 ROOT / "backend/fonts/FandolHei-Regular.otf",
-                tex_directory() / ("xelatex.exe" if WINDOWS else "xelatex"),
-                ROOT / "runtime/redis" / ("redis-server.exe" if WINDOWS else "redis-server")]
+                tex_directory() / ("xelatex.exe" if WINDOWS else "xelatex")]
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         raise RuntimeError("安装文件不完整，请重新安装：" + ", ".join(missing))
@@ -150,13 +148,9 @@ def start(data: Path, *, smoke: bool = False, report: Path | None = None):
     stop = data / "stop.request"
     stop.unlink(missing_ok=True)
     owner.unlink(missing_ok=True)
-    redis_port, api_port = free_port(), free_port()
-    while api_port == redis_port:
-        api_port = free_port()
-    secret = secrets.token_urlsafe(32)
+    api_port = free_port()
     url = f"http://127.0.0.1:{api_port}"
-    env.update(REDIS_URL=f"redis://:{secret}@127.0.0.1:{redis_port}/0",
-               SERVER_HOST=url, CORS_ALLOW_ORIGINS=url)
+    env.update(SERVER_HOST=url, CORS_ALLOW_ORIGINS=url)
 
     def spawn(args, logname):
         handle = (data / "logs" / logname).open("ab")
@@ -168,24 +162,6 @@ def start(data: Path, *, smoke: bool = False, report: Path | None = None):
         return process
 
     try:
-        redis = spawn([ROOT / "runtime/redis" / ("redis-server.exe" if WINDOWS else "redis-server"),
-                       "--bind", "127.0.0.1", "--port", str(redis_port),
-                       "--requirepass", secret, "--dir", str(data / "redis"),
-                       "--appendonly", "yes", "--save", "60 1"], "redis.log")
-        from redis import Redis
-        client = Redis(host="127.0.0.1", port=redis_port, password=secret,
-                       socket_connect_timeout=1, socket_timeout=1)
-        for _ in range(60):
-            try:
-                if client.ping():
-                    break
-            except Exception:
-                pass
-            if redis.poll() is not None:
-                raise RuntimeError("本地存储启动失败，请查看 logs/redis.log")
-            time.sleep(0.5)
-        else:
-            raise RuntimeError("本地存储启动超时，请查看 logs/redis.log")
         backend = spawn([python_executable(), "-B", "-m", "uvicorn", "app.main:app",
                          "--host", "127.0.0.1", "--port", str(api_port),
                          "--ws-ping-interval", "60", "--ws-ping-timeout", "120"], "backend.log")
@@ -206,7 +182,7 @@ def start(data: Path, *, smoke: bool = False, report: Path | None = None):
             with urllib.request.urlopen(url + "/home", timeout=10) as response:
                 if b"<html" not in response.read():
                     raise RuntimeError("Frontend not served by packaged backend")
-            result = check_files() | {"redis_ping": True, "backend_ready": True,
+            result = check_files() | {"backend_ready": True,
                                       "frontend_ready": True, "data_directory": str(data)}
             if report:
                 report.write_text(json.dumps(result, indent=2), encoding="utf-8")
@@ -223,7 +199,7 @@ def start(data: Path, *, smoke: bool = False, report: Path | None = None):
                             ))
         def watch():
             while icon.visible:
-                if stop.exists() or backend.poll() is not None or redis.poll() is not None:
+                if stop.exists() or backend.poll() is not None:
                     icon.stop()
                     return
                 time.sleep(1)

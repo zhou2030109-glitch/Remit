@@ -1,6 +1,6 @@
 #!/bin/bash
 # Remit macOS 双击启动入口（对应 Windows 的 win_start.bat）。
-# Finder 双击本文件即可在终端中启动 Redis + FastAPI + Vue 三个服务。
+# Finder 双击本文件即可在终端中启动 FastAPI + Vue 两个服务。
 cd "$(dirname "$0")" || exit 1
 
 bash tools/start_services.sh "$@"

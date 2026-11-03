@@ -18,15 +18,14 @@ docker compose -f docker-compose.release.yml up -d --no-build
 端口冲突时，Bash 中先执行 `export REMIT_PORT=18080`，PowerShell 中先执行
 `$env:REMIT_PORT="18080"`；发布服务只绑定本机回环地址。
 
-配置、任务文件、消息档案和 Redis 数据分别保存在 Compose 命名卷中。
+配置、任务文件和消息档案分别保存在 Compose 命名卷中。
 `docker compose -f docker-compose.release.yml down` 停止容器并保留数据；不要在
 希望保留任务时使用 `down -v`。备份时先停止服务，再备份这些卷。
 
-离线分发可将应用和 Redis 一起导出：
+离线分发可导出应用镜像：
 
 ```bash
-docker pull redis:7.4-alpine
-docker save remit:2.0.1 redis:7.4-alpine | gzip > remit-2.0.1-linux-amd64.tar.gz
+docker save remit:2.0.1 | gzip > remit-2.0.1-linux-amd64.tar.gz
 ```
 
 接收方需要支持 Linux 容器的 Docker，先导入归档，再使用随包 Compose 文件：
@@ -52,7 +51,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/package_win.ps1
 默认从开发环境定位基础 Python；未创建开发环境时，可用 `-BasePython` 指定基础 Python 安装目录。
 `backend/build-info.json` 记录锁文件 SHA-256 和依赖构建方式。
 
-包中包含 Python、Redis、生产前端和后端源码；不包含本机模型密钥和历史任务。
+包中包含 Python、生产前端和后端源码；不包含本机模型密钥和历史任务。
 安装后在界面填写模型配置。Python 计算无需另装 MATLAB。
 
 安装包不捆绑 MiKTeX/TeX Live；需要导出最终 LaTeX/PDF 论文时，请在目标电脑安装

@@ -33,7 +33,7 @@ from app.schemas.response import (
     SystemMessage,
     WriterMessage,
 )
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.services.call_ledger import CallPurpose
 from app.utils.common_utils import split_footnotes, transform_link
 from app.utils.log_util import logger
@@ -544,7 +544,7 @@ class LLM:
             return False
         if self.task_id:
             try:
-                await redis_manager.notify(
+                await task_bus.notify(
                     self.task_id,
                     f"主模型连接持续失败，已切换备用模型 {self.model} 继续",
                     "warning",
@@ -589,7 +589,7 @@ class LLM:
         agent_name: str,
         sub_title: str | None = None,
     ) -> None:
-        """把响应内容按角色封装后经 Redis 推给前端。"""
+        """把响应内容按角色封装后经任务总线推给前端。"""
         content = response.content
         if content is None:
             return
@@ -612,7 +612,7 @@ class LLM:
                 raise ValueError(f"不支持的 Agent 类型：{agent_name}")
             agent_msg = message_type(content=content)
 
-        await redis_manager.publish_message(self.task_id, agent_msg)
+        await task_bus.publish_message(self.task_id, agent_msg)
 
 
 async def simple_chat(model: LLM, history: list) -> str:

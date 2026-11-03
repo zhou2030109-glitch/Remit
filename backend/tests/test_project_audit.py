@@ -13,7 +13,7 @@ from app.core.literature import run_literature_review
 from app.core.llm.types import StandardResponse
 from app.core.progress import build_progress_message
 from app.core.workflow_checkpoint import WorkflowCheckpoint
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.schemas.request import Problem
 from app.routers import common_router
 from app.tools.openalex_scholar import OpenAlexScholar
@@ -107,7 +107,7 @@ class ProjectAuditAsyncTests(unittest.IsolatedAsyncioTestCase):
                 "app.tools.openalex_scholar.requests.get",
                 return_value=response,
             ) as request,
-            patch.object(redis_manager, "publish_message", new=AsyncMock()),
+            patch.object(task_bus, "publish_message", new=AsyncMock()),
         ):
             papers = await scholar.search_papers("rectilinear Steiner tree", limit=3)
 

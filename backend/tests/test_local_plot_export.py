@@ -20,7 +20,7 @@ from PIL import Image
 @pytest.mark.parametrize("directory", ["普通目录", "中文 O'Brien 数据"])
 def test_local_interpreter_exports_chinese_plot(tmp_path, monkeypatch, directory):
     monkeypatch.setattr(
-        "app.tools.local_interpreter.redis_manager.publish_message", AsyncMock()
+        "app.tools.local_interpreter.task_bus.publish_message", AsyncMock()
     )
     work_dir = tmp_path / directory
     work_dir.mkdir()
@@ -93,7 +93,7 @@ def test_initialized_kernel_exports_figures_and_preserves_math(tmp_path):
             timeout=45,
         )
         with patch(
-            "app.tools.local_interpreter.redis_manager.publish_message", new=AsyncMock()
+            "app.tools.local_interpreter.task_bus.publish_message", new=AsyncMock()
         ):
             try:
                 await interpreter.initialize()

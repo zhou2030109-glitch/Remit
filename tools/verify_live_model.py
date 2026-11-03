@@ -14,8 +14,6 @@ import io
 import os
 import shutil
 from pathlib import Path
-import socket
-import subprocess
 import sys
 import time
 import zipfile
@@ -52,17 +50,16 @@ def verify_outputs(work: Path) -> dict:
     }
 
 
-async def run_case(data: Path, port: int, *, generate_report: bool) -> dict:
+async def run_case(data: Path, *, generate_report: bool) -> dict:
     from app.config.setting import settings
 
-    settings.REDIS_URL = f"redis://127.0.0.1:{port}/0"
     settings.LLM_STAGE_CALL_LIMIT = 10
     settings.LLM_STAGE_API_SECONDS = 600
     settings.API_HARD_TIMEOUT_SECONDS = min(settings.API_HARD_TIMEOUT_SECONDS, 120)
-    # Test-local message archive, using the actual RedisManager and SQLite implementation.
-    import app.services.redis_manager as redis_module
+    # Test-local message archive, using the actual TaskBus and SQLite implementation.
+    import app.services.task_bus as bus_module
 
-    redis_module.redis_manager = redis_module.RedisManager(data / "logs/messages")
+    bus_module.task_bus = bus_module.TaskBus(data / "logs/messages")
     from app.utils.log_util import logger
 
     logger.remove()
@@ -207,11 +204,11 @@ async def run_case(data: Path, port: int, *, generate_report: bool) -> dict:
     finally:
         if interpreter is not None:
             await interpreter.cleanup()
-        await redis_module.redis_manager.close()
+        await bus_module.task_bus.close()
     return report
 
 
-async def run_writing_case(data: Path, port: int) -> dict:
+async def run_writing_case(data: Path) -> dict:
     """Exercise the real writing API on independently rechecked synthetic files.
 
     The completed modeling checkpoint is a fixture, not a Coordinator/Modeler
@@ -220,7 +217,6 @@ async def run_writing_case(data: Path, port: int) -> dict:
     os.environ["REMIT_MESSAGES_DIR"] = str(data / "logs/messages")
     from app.config.setting import settings
 
-    settings.REDIS_URL = f"redis://127.0.0.1:{port}/0"
     settings.API_HARD_TIMEOUT_SECONDS = min(settings.API_HARD_TIMEOUT_SECONDS, 120)
     from app.utils.log_util import logger
 
@@ -232,7 +228,7 @@ async def run_writing_case(data: Path, port: int) -> dict:
     from app.routers import writing_router
     from app.schemas.request import Problem
     from app.services import call_ledger, writing_workspace as ws
-    from app.services.redis_manager import redis_manager
+    from app.services.task_bus import task_bus
     from app.utils.common_utils import create_work_dir
 
     task_id = "live-short-report"
@@ -340,7 +336,7 @@ async def run_writing_case(data: Path, port: int) -> dict:
         )
     finally:
         await writing_router.shutdown_writers()
-        await redis_manager.close()
+        await task_bus.close()
         report["elapsed_seconds"] = round(time.monotonic() - started, 2)
         report["usage"] = call_ledger.summary(work)
         (data / "live-writing-result.json").write_text(
@@ -363,7 +359,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--allow-live", action="store_true")
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--port", type=int, default=16381)
     parser.add_argument(
         "--writing-only",
         action="store_true",
@@ -375,47 +370,13 @@ def main():
     repo = Path(__file__).resolve().parents[1]
     data = args.output_dir.resolve()
     data.mkdir(parents=True, exist_ok=False)
-    with socket.socket() as check:
-        check.bind(("127.0.0.1", args.port))
     sys.path.insert(0, str(repo / "backend"))
     os.chdir(data)
-    with (data / "redis.log").open("w", encoding="utf-8") as log:
-        process = subprocess.Popen(
-            [
-                str(repo / "tools/redis/redis-server.exe"),
-                "--bind",
-                "127.0.0.1",
-                "--port",
-                str(args.port),
-                "--save",
-                "",
-                "--appendonly",
-                "no",
-                "--dir",
-                str(data),
-            ],
-            stdout=log,
-            stderr=subprocess.STDOUT,
-        )
-        try:
-            for _ in range(100):
-                try:
-                    with socket.create_connection(
-                        ("127.0.0.1", args.port), timeout=0.2
-                    ):
-                        break
-                except OSError:
-                    if process.poll() is not None:
-                        raise RuntimeError("Isolated Redis exited before ready")
-                    time.sleep(0.05)
-            result = asyncio.run(
-                run_writing_case(data, args.port)
-                if args.writing_only
-                else run_case(data, args.port, generate_report=True)
-            )
-        finally:
-            process.terminate()
-            process.wait(timeout=5)
+    result = asyncio.run(
+        run_writing_case(data)
+        if args.writing_only
+        else run_case(data, generate_report=True)
+    )
     raise SystemExit(0 if result["status"] == "passed" else 1)
 
 

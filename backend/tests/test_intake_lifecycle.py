@@ -1,4 +1,4 @@
-"""任务接收与取消在 Redis 故障下的生命周期边界。"""
+"""任务接收与取消在任务总线故障下的生命周期边界。"""
 
 from __future__ import annotations
 
@@ -39,17 +39,17 @@ class IntakeLifecycleTests(unittest.IsolatedAsyncioTestCase):
                 try:
                     with (
                         patch.object(
-                            common_router.redis_manager,
+                            common_router.task_bus,
                             "load_task_messages",
                             new=AsyncMock(return_value=messages),
                         ),
                         patch.object(
-                            common_router.redis_manager,
+                            common_router.task_bus,
                             "list_task_summaries",
                             new=AsyncMock(return_value=summaries),
                         ),
                         patch.object(
-                            common_router.redis_manager,
+                            common_router.task_bus,
                             "delete_task_record",
                             new=AsyncMock(),
                         ) as delete_record,
@@ -82,10 +82,10 @@ class IntakeLifecycleTests(unittest.IsolatedAsyncioTestCase):
             patch.object(router, "WorkflowCheckpoint") as checkpoint,
             patch.object(router, "run_modeling_task_async", new=AsyncMock()) as run,
             patch.object(
-                router.redis_manager, "is_cancellation_requested", new=AsyncMock()
+                router.task_bus, "is_cancellation_requested", new=AsyncMock()
             ) as lookup,
             patch.object(
-                router.redis_manager, "publish_message", new=AsyncMock()
+                router.task_bus, "publish_message", new=AsyncMock()
             ) as publish,
         ):
             await router._auto_resume_after_failure(
@@ -134,13 +134,13 @@ class IntakeLifecycleTests(unittest.IsolatedAsyncioTestCase):
             patch.object(router, "RemitWorkFlow", return_value=workflow),
             patch.object(router, "_AUTO_RESUME_LIMIT", 0),
             patch.object(
-                router.redis_manager,
+                router.task_bus,
                 "is_cancellation_requested",
                 side_effect=lookup,
             ),
-            patch.object(router.redis_manager, "publish_message", new=AsyncMock()),
+            patch.object(router.task_bus, "publish_message", new=AsyncMock()),
             patch.object(
-                router.redis_manager,
+                router.task_bus,
                 "clear_cancellation_request",
                 new=AsyncMock(side_effect=ConnectionError("Redis still offline")),
             ),
@@ -163,7 +163,7 @@ class IntakeLifecycleTests(unittest.IsolatedAsyncioTestCase):
         router._active_tasks[task_id] = (task, cancel_event)
         with (
             patch.object(
-                router.redis_manager,
+                router.task_bus,
                 "request_cancellation",
                 new=AsyncMock(side_effect=ConnectionError("Redis offline")),
             ),
@@ -189,25 +189,24 @@ class IntakeLifecycleTests(unittest.IsolatedAsyncioTestCase):
             patch.object(router, "create_work_dir", return_value=directory),
             patch.object(router, "WorkflowCheckpoint"),
             patch.object(router, "RemitWorkFlow", return_value=workflow),
-            patch.object(router.redis_manager, "set", new=AsyncMock()),
-            patch.object(router.redis_manager, "publish_message", new=AsyncMock()),
+            patch.object(router.task_bus, "publish_message", new=AsyncMock()),
             patch.object(
-                router.redis_manager,
+                router.task_bus,
                 "load_task_messages",
                 new=AsyncMock(return_value=messages),
             ),
             patch.object(
-                router.redis_manager,
+                router.task_bus,
                 "request_cancellation",
                 new=AsyncMock(side_effect=ConnectionError("Redis offline")),
             ),
             patch.object(
-                router.redis_manager,
+                router.task_bus,
                 "is_cancellation_requested",
                 new=AsyncMock(return_value=False),
             ),
             patch.object(
-                router.redis_manager, "clear_cancellation_request", new=AsyncMock()
+                router.task_bus, "clear_cancellation_request", new=AsyncMock()
             ),
             patch.object(
                 router, "_load_workflow_checkpoint", side_effect=HTTPException(404)
@@ -229,7 +228,7 @@ class IntakeLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(task_id, router._pending_cancellations)
 
     async def test_scheduling_failure_discards_uploaded_new_workspace(self) -> None:
-        task_id = "intake-redis-failure"
+        task_id = "intake-scheduling-failure"
         background = BackgroundTasks()
         upload = UploadFile(filename="input.csv", file=BytesIO(b"x,y\n1,2\n"))
         with (
@@ -238,15 +237,15 @@ class IntakeLifecycleTests(unittest.IsolatedAsyncioTestCase):
             patch.object(router, "create_task_id", return_value=task_id),
             patch("app.utils.common_utils._install_fonts"),
             patch.object(
-                router.redis_manager,
-                "set",
-                new=AsyncMock(side_effect=ConnectionError("Redis offline")),
+                router.task_bus,
+                "publish_message",
+                new=AsyncMock(side_effect=OSError("archive unavailable")),
             ),
             patch.object(
-                router.redis_manager, "delete_task_record", new=AsyncMock()
+                router.task_bus, "delete_task_record", new=AsyncMock()
             ) as discard_record,
         ):
-            with self.assertRaises((ConnectionError, HTTPException)):
+            with self.assertRaises((OSError, HTTPException)):
                 await router.submit_modeling(
                     background_tasks=background,
                     ques_all="test question",
@@ -266,14 +265,13 @@ class IntakeLifecycleTests(unittest.IsolatedAsyncioTestCase):
         with (
             tempfile.TemporaryDirectory() as directory,
             chdir(directory),
-            patch.object(router.redis_manager, "set", new=AsyncMock()),
             patch.object(
-                router.redis_manager,
+                router.task_bus,
                 "publish_message",
                 new=AsyncMock(side_effect=OSError("archive unavailable")),
             ),
             patch.object(
-                router.redis_manager, "delete_task_record", new=AsyncMock()
+                router.task_bus, "delete_task_record", new=AsyncMock()
             ) as discard_record,
         ):
             workspace = Path("project/work_dir") / task_id

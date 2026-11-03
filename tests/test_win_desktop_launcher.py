@@ -80,6 +80,7 @@ class WindowsDesktopLauncherTests(unittest.TestCase):
                     "-NoProfile",
                     "-Command",
                     (
+                        "[Console]::OutputEncoding=[Text.Encoding]::UTF8;"
                         "$s=(New-Object -ComObject WScript.Shell).CreateShortcut("
                         f"'{shortcut_path}');"
                         "'{0}|{1}|{2}' -f $s.TargetPath, $s.Arguments, $s.WorkingDirectory"

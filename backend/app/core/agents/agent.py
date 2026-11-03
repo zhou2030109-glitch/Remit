@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.llm.llm import LLM
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.utils.log_util import logger
 
 # 中英混合文本的保守 token 估算（字符 / token）
@@ -198,7 +198,7 @@ class Agent:
 
     async def _inject_user_notes(self) -> None:
         """把任务运行中用户的插话注入下一轮对话，支持中途纠偏。"""
-        notes = await redis_manager.drain_user_notes(self.task_id)
+        notes = await task_bus.drain_user_notes(self.task_id)
         if not notes:
             return
         joined = "\n".join(f"- {note}" for note in notes)
@@ -211,7 +211,7 @@ class Agent:
             }
         )
         try:
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id, f"已把你的 {len(notes)} 条补充意见注入当前步骤", "success"
             )
         except Exception as exc:

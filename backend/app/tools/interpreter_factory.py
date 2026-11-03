@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 from app.config.setting import settings
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.tools.base_interpreter import BaseCodeInterpreter
 from app.tools.e2b_interpreter import E2BCodeInterpreter
 from app.tools.local_interpreter import LocalCodeInterpreter
@@ -67,14 +67,14 @@ async def create_interpreter(
         )
         try:
             await matlab.initialize()
-            await redis_manager.notify(task_id, f"计算后端已选择 {matlab.backend_name}")
+            await task_bus.notify(task_id, f"计算后端已选择 {matlab.backend_name}")
             return matlab
         except MatlabUnavailableError as exc:
             if not settings.MATLAB_FALLBACK_TO_PYTHON:
                 raise
             fallback_reason = str(exc)
             logger.warning(f"MATLAB 不可用，回退本地 Python: {fallback_reason}")
-            await redis_manager.notify(
+            await task_bus.notify(
                 task_id, f"MATLAB 不可用，自动回退 Python：{fallback_reason}", "warning"
             )
             _write_python_fallback_metadata(work_dir, fallback_reason)

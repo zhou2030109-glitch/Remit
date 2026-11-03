@@ -18,7 +18,7 @@ from typing import Any
 
 from app.config.setting import settings
 from app.schemas.response import OutputItem, ResultModel, StdErrModel
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.tools.base_interpreter import BaseCodeInterpreter
 from app.tools.execution_guard import assess_code_execution
 from app.tools.notebook_serializer import NotebookSerializer
@@ -298,7 +298,7 @@ class MatlabCodeInterpreter(BaseCodeInterpreter):
                 self._build_user_script(code),
                 encoding="utf-8",
             )
-            await redis_manager.notify(self.task_id, "开始执行 MATLAB 代码")
+            await task_bus.notify(self.task_id, "开始执行 MATLAB 代码")
 
             stdout = io.StringIO()
             stderr = io.StringIO()
@@ -373,7 +373,7 @@ class MatlabCodeInterpreter(BaseCodeInterpreter):
                 if self.current_section:
                     self.add_content(self.current_section, output)
 
-            await redis_manager.notify(
+            await task_bus.notify(
                 self.task_id,
                 "MATLAB 代码执行失败" if error_occurred else "MATLAB 代码执行完成",
                 "error" if error_occurred else "info",
@@ -383,7 +383,7 @@ class MatlabCodeInterpreter(BaseCodeInterpreter):
 
     async def _reject_execution(self, reason: str) -> tuple[str, bool, str]:
         self.notebook_serializer.add_code_cell_error_to_notebook(reason)
-        await redis_manager.notify(self.task_id, reason, "warning")
+        await task_bus.notify(self.task_id, reason, "warning")
         await self._push_to_websocket([StdErrModel(msg=reason)])
         return reason, True, reason
 

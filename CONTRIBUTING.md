@@ -21,8 +21,7 @@ and agree that it may be distributed under this repository's MIT License.
 Requirements:
 
 - Python 3.12 (see `backend/.python-version`) and [uv](https://docs.astral.sh/uv/);
-- Node.js 24 (see `frontend/.node-version`) and pnpm 10.6.3;
-- Redis for the complete runtime workflow.
+- Node.js 24 (see `frontend/.node-version`) and pnpm 10.6.3.
 
 ```powershell
 cd backend

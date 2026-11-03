@@ -66,4 +66,4 @@ Type: filesandordirs; Name: "{app}\runtime\python\Lib\site-packages\*\__pycache_
 Filename: "{app}\runtime\python\python.exe"; Parameters: "-B ""{app}\tools\remit_prod_app.pyc"" --stop"; WorkingDir: "{app}"; Flags: runhidden; RunOnceId: "StopRemitServices"
 
 [Messages]
-WelcomeLabel2=Remit 是本地优先的数学建模工作台。[n][n]安装包内置 Python 运行时与 Redis，默认使用 Python。PDF 编译另需 XeLaTeX，缺少时可保存论文源码。[n][n]首次打开后，请先运行本地环境自检，再在设置中保存模型连接。[n][n]项目与设置保存在独立用户数据目录，升级和卸载保留这些数据。分发前请阅读 NOTICE.md。
+WelcomeLabel2=Remit 是本地优先的数学建模工作台。[n][n]安装包内置 Python 运行时，默认使用 Python。PDF 编译另需 XeLaTeX，缺少时可保存论文源码。[n][n]首次打开后，请先运行本地环境自检，再在设置中保存模型连接。[n][n]项目与设置保存在独立用户数据目录，升级和卸载保留这些数据。分发前请阅读 NOTICE.md。

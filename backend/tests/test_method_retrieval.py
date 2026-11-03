@@ -239,7 +239,7 @@ class MethodRetrievalIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 user_requirements="保留原始数据",
             )
             with patch(
-                "app.core.workflow.redis_manager.publish_message", new=AsyncMock()
+                "app.core.workflow.task_bus.publish_message", new=AsyncMock()
             ):
                 await workflow._modeler_node(
                     checkpoint.load(), coordinator, modeler, None
@@ -282,7 +282,7 @@ class MethodRetrievalIntegrationTests(unittest.IsolatedAsyncioTestCase):
             )
             with (
                 patch(
-                    "app.core.workflow.redis_manager.publish_message", new=AsyncMock()
+                    "app.core.workflow.task_bus.publish_message", new=AsyncMock()
                 ),
                 patch(
                     "app.core.workflow.HierarchicalMethodRetriever.from_default_library",
@@ -420,7 +420,7 @@ class MethodRetrievalIntegrationTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "app.core.model_council.redis_manager.publish_message",
+            "app.core.model_council.task_bus.publish_message",
             new=AsyncMock(),
         ):
             await council.propose(coordinator)
@@ -471,7 +471,7 @@ class MethodRetrievalIntegrationTests(unittest.IsolatedAsyncioTestCase):
             )
 
             with patch(
-                "app.core.workflow.redis_manager.publish_message",
+                "app.core.workflow.task_bus.publish_message",
                 new=AsyncMock(),
             ):
                 await workflow._modeler_node(
@@ -547,7 +547,7 @@ class MethodRetrievalIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
             with (
                 patch(
-                    "app.core.workflow.redis_manager.publish_message",
+                    "app.core.workflow.task_bus.publish_message",
                     new=AsyncMock(),
                 ),
                 patch(

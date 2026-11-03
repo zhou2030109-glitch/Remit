@@ -284,7 +284,7 @@ def test_previous_final_approval_cannot_validate_failed_recompile(
     monkeypatch.setattr(flow, "_complete_node", AsyncMock())
     monkeypatch.setattr(flow, "_review_and_polish_paper", AsyncMock(return_value={}))
     monkeypatch.setattr(workflow_writing, "polish_markdown", lambda *args: "fixture")
-    monkeypatch.setattr(module.redis_manager, "publish_message", AsyncMock())
+    monkeypatch.setattr(module.task_bus, "publish_message", AsyncMock())
 
     def invalid(*args, **kwargs):
         raise workflow_writing.PaperRenderError("new compilation failed")

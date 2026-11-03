@@ -29,7 +29,7 @@ jobs:
           version: '0.12.10'
           python-version: '3.12'
       - name: Install runtime dependencies for integration tests
-        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk redis-server xvfb
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk xvfb
       - run: uv sync --locked
         working-directory: backend
       - run: python tools/check_public_tree.py

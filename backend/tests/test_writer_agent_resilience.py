@@ -30,7 +30,7 @@ class WriterAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
             ]
         )
         with patch(
-            "app.core.agents.writer_agent.redis_manager.publish_message",
+            "app.core.agents.writer_agent.task_bus.publish_message",
             new=AsyncMock(),
         ):
             result = await agent.run("Write from evidence", sub_title="ques1")
@@ -46,7 +46,7 @@ class WriterAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
             return_value=StandardResponse(content="", finish_reason="stop")
         )
         with patch(
-            "app.core.agents.writer_agent.redis_manager.publish_message",
+            "app.core.agents.writer_agent.task_bus.publish_message",
             new=AsyncMock(),
         ):
             with self.assertRaisesRegex(RuntimeError, "未保存为完成稿"):
@@ -85,7 +85,7 @@ class WriterAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "app.core.agents.writer_agent.redis_manager.publish_message",
+            "app.core.agents.writer_agent.task_bus.publish_message",
             new=AsyncMock(),
         ):
             result = await agent.run("Write the section", sub_title="ques2")
@@ -119,7 +119,7 @@ class WriterAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
             ]
         )
         with patch(
-            "app.core.agents.writer_agent.redis_manager.publish_message",
+            "app.core.agents.writer_agent.task_bus.publish_message",
             new=AsyncMock(),
         ):
             result = await agent.run("Write from evidence", sub_title="ques1")

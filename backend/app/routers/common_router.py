@@ -18,12 +18,12 @@ from app.utils.common_utils import get_config_template
 from app.routers.dependencies import http_task_id
 from app.schemas.enums import AgentType, CompTemplate
 from app.schemas.response import ModelerMessage, UserMessage
-from app.services.redis_manager import redis_manager
+from app.services.task_bus import task_bus
 from app.utils.log_util import logger
 
 router = APIRouter()
 TASK_WORK_DIR_ROOT = Path("project") / "work_dir"
-_REDIS_STATUS_TIMEOUT_SECONDS = 2.0
+_STATUS_TIMEOUT_SECONDS = 2.0
 
 
 class TaskMessageRequest(BaseModel):
@@ -213,9 +213,7 @@ async def get_task_messages(
     limit: int | None = Query(default=None, ge=1, le=1000),
 ):
     try:
-        return await redis_manager.load_task_messages(
-            http_task_id(task_id), after, limit
-        )
+        return await task_bus.load_task_messages(http_task_id(task_id), after, limit)
     except (OSError, ValueError) as exc:
         raise HTTPException(
             status_code=409, detail="任务消息档案不可读，请检查本地历史文件"
@@ -226,16 +224,16 @@ async def get_task_messages(
 async def post_task_message(task_id: str, request: TaskMessageRequest):
     """保存并实时广播任务页中的用户补充消息。"""
     safe_task_id = http_task_id(task_id)
-    if not await redis_manager.task_exists(safe_task_id):
+    if not await task_bus.task_exists(safe_task_id):
         raise HTTPException(status_code=404, detail="任务不存在")
     content = request.content.strip()
     if not content:
         raise HTTPException(status_code=422, detail="消息不能为空")
     message = UserMessage(content=content)
-    await redis_manager.publish_message(safe_task_id, message)
+    await task_bus.publish_message(safe_task_id, message)
     # 同时进入插话队列：正在运行的 Agent 会在下一轮对话时注入并遵循
     try:
-        await redis_manager.push_user_note(safe_task_id, content)
+        await task_bus.push_user_note(safe_task_id, content)
     except Exception as error:
         logger.warning(f"用户插话入队失败 {safe_task_id}: {error}")
     return message
@@ -337,7 +335,7 @@ async def _build_task_copilot_context(task_id: str) -> dict[str, Any]:
             if isinstance(metrics, dict):
                 context["prediction_metrics"][path.name] = _compact_value(metrics)
 
-    messages = await redis_manager.load_task_messages(task_id)
+    messages = await task_bus.load_task_messages(task_id)
     for message in messages[-80:]:
         if not isinstance(message, dict) or message.get("msg_type") == "tool":
             continue
@@ -360,11 +358,11 @@ async def _build_task_copilot_context(task_id: str) -> dict[str, Any]:
 async def post_task_copilot(task_id: str, request: TaskCopilotRequest):
     """让主建模模型只读分析当前冻结证据，并把答复保存到任务历史。"""
     safe_task_id = http_task_id(task_id)
-    if not await redis_manager.task_exists(safe_task_id):
+    if not await task_bus.task_exists(safe_task_id):
         raise HTTPException(status_code=404, detail="任务不存在")
 
     user_message = UserMessage(content=request.action)
-    await redis_manager.publish_message(safe_task_id, user_message)
+    await task_bus.publish_message(safe_task_id, user_message)
     context = await _build_task_copilot_context(safe_task_id)
     _, modeler_llm, _, _ = LLMFactory(safe_task_id).get_all_llms()
     action_guidance = {
@@ -411,14 +409,14 @@ async def post_task_copilot(task_id: str, request: TaskCopilotRequest):
     if not content:
         raise HTTPException(status_code=502, detail="Project Copilot 返回了空结果")
     agent_message = ModelerMessage(content=content)
-    await redis_manager.publish_message(safe_task_id, agent_message)
+    await task_bus.publish_message(safe_task_id, agent_message)
     return TaskCopilotResponse(request=user_message, response=agent_message)
 
 
 @router.get("/tasks")
 async def list_tasks():
     """列出所有具有持久化消息记录的历史任务。"""
-    return await redis_manager.list_task_summaries()
+    return await task_bus.list_task_summaries()
 
 
 def _delete_task_work_dir(task_id: str) -> bool:
@@ -461,7 +459,7 @@ def _task_is_scheduled(task_id: str) -> bool:
 @router.delete("/tasks", response_model=ClearTaskHistoryResponse)
 async def clear_task_history():
     """永久清空全部已结束任务；存在运行中任务时不删除任何内容。"""
-    summaries = await redis_manager.list_task_summaries()
+    summaries = await task_bus.list_task_summaries()
     running_tasks = [
         str(summary["task_id"])
         for summary in summaries
@@ -479,7 +477,7 @@ async def clear_task_history():
     task_ids = [http_task_id(str(summary["task_id"])) for summary in summaries]
     for task_id in task_ids:
         _delete_task_work_dir(task_id)
-        await redis_manager.delete_task_record(task_id)
+        await task_bus.delete_task_record(task_id)
 
     return ClearTaskHistoryResponse(
         success=True,
@@ -496,10 +494,10 @@ async def clear_task_history():
 async def delete_task(task_id: str):
     """永久删除一个已结束任务的历史消息和全部生成文件。"""
     safe_task_id = http_task_id(task_id)
-    messages = await redis_manager.load_task_messages(safe_task_id)
+    messages = await task_bus.load_task_messages(safe_task_id)
     if not messages:
         raise HTTPException(status_code=404, detail="历史任务不存在")
-    if _task_is_scheduled(safe_task_id) or redis_manager.task_status_from_messages(
+    if _task_is_scheduled(safe_task_id) or task_bus.task_status_from_messages(
         messages
     ) in {
         "running",
@@ -508,7 +506,7 @@ async def delete_task(task_id: str):
         raise HTTPException(status_code=409, detail="任务仍在运行，请先停止后再删除")
 
     _delete_task_work_dir(safe_task_id)
-    await redis_manager.delete_task_record(safe_task_id)
+    await task_bus.delete_task_record(safe_task_id)
     return DeleteTaskResponse(
         success=True,
         task_id=safe_task_id,
@@ -518,11 +516,11 @@ async def delete_task(task_id: str):
 
 @router.get("/status")
 async def get_service_status():
-    """获取后端和 Redis 的运行状态。"""
-    healthy, message = await redis_manager.health(_REDIS_STATUS_TIMEOUT_SECONDS)
+    """获取后端和任务服务的运行状态。"""
+    healthy, message = await task_bus.health(_STATUS_TIMEOUT_SECONDS)
     return {
         "backend": {"status": "running", "message": "Remit 后端运行正常"},
-        "redis": {"status": "running" if healthy else "error", "message": message},
+        "task_bus": {"status": "running" if healthy else "error", "message": message},
     }
 
 

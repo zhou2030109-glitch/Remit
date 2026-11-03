@@ -19,7 +19,7 @@ pnpm build
 
 ## macOS/Linux 源码运行
 
-先安装 Redis（macOS 可用 Homebrew，Linux 可用系统包管理器），按 README 安装后端和前端依赖并复制示例环境文件。在根目录执行：
+按 README 安装后端和前端依赖并复制示例环境文件。在根目录执行：
 
 ```sh
 bash tools/start_services.sh --check
@@ -36,4 +36,4 @@ bash tools/start_services.sh
 
 ### Linux 集成测试依赖
 
-测试包含真实 Pandoc 转换、中文绘图和桌面启动。Ubuntu 需先安装 `fonts-noto-cjk`、`redis-server` 和 `xvfb`；`pypandoc-binary` 由锁定的 Python 依赖提供。缺少中文字体时，绘图会明确失败，避免生成缺字图片。
+测试包含真实 Pandoc 转换、中文绘图和桌面启动。Ubuntu 需先安装 `fonts-noto-cjk` 和 `xvfb`；`pypandoc-binary` 由锁定的 Python 依赖提供。缺少中文字体时，绘图会明确失败，避免生成缺字图片。

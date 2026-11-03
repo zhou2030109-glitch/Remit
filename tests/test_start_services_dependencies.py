@@ -16,7 +16,7 @@ START_SERVICES = PROJECT_ROOT / "tools" / "start_services.ps1"
 
 @unittest.skipUnless(
     sys.platform == "win32",
-    "start_services.ps1 requires Windows venv/redis layout and powershell.exe; "
+    "start_services.ps1 requires Windows venv layout and powershell.exe; "
     "POSIX environments are covered by test_posix_start_launcher.py",
 )
 class StartServicesDependencyTests(unittest.TestCase):
@@ -45,8 +45,6 @@ class StartServicesDependencyTests(unittest.TestCase):
             launcher.parent.mkdir(parents=True)
             shutil.copy2(START_SERVICES, launcher)
 
-            (root / "tools" / "redis").mkdir(parents=True)
-            (root / "tools" / "redis" / "redis-server.exe").touch()
             (root / "backend" / ".venv" / "Scripts").mkdir(parents=True)
             (root / "backend" / ".venv" / "Scripts" / "python.exe").touch()
             (root / "frontend" / "node_modules").mkdir(parents=True)

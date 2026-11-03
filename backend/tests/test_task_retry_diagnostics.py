@@ -27,13 +27,13 @@ def retry_task(tmp_path, monkeypatch):
     monkeypatch.setattr(modeling_router, "_pending_cancellations", set())
     monkeypatch.setattr(modeling_router, "_auto_resume_counts", {})
     monkeypatch.setattr(
-        modeling_router.redis_manager,
+        modeling_router.task_bus,
         "is_cancellation_requested",
         AsyncMock(return_value=False),
     )
-    monkeypatch.setattr(modeling_router.redis_manager, "publish_message", AsyncMock())
+    monkeypatch.setattr(modeling_router.task_bus, "publish_message", AsyncMock())
     monkeypatch.setattr(
-        modeling_router.redis_manager, "clear_cancellation_request", AsyncMock()
+        modeling_router.task_bus, "clear_cancellation_request", AsyncMock()
     )
     return root, checkpoint
 
@@ -80,7 +80,7 @@ def test_retry_dispatch_failure_restores_manual_recovery(retry_task, monkeypatch
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        modeling_router.redis_manager,
+        modeling_router.task_bus,
         "is_cancellation_requested",
         AsyncMock(side_effect=RuntimeError("fixture unavailable state service")),
     )

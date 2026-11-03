@@ -108,7 +108,7 @@ docker compose -f docker-compose.release.yml up -d --build
 
 ## Windows 源码启动
 
-需要 Python 3.12、uv、Node.js 24、pnpm 10。仓库包含 Windows 启动器所需的 Redis 运行文件及许可证。
+需要 Python 3.12、uv、Node.js 24、pnpm 10。
 
 ```powershell
 git clone https://github.com/zhou2030109-glitch/Remit.git
@@ -128,7 +128,7 @@ cd ..
 - 模型密钥在界面保存到本机配置，仓库不提供密钥。
 - MATLAB 可选，需要自行安装并具备可用许可证；默认优先 MATLAB，不可用时按配置回退 Python。可在 `backend/.env.dev` 设置 `CODE_EXECUTION_BACKEND=python`。
 - 本机导出论文 PDF 需安装 XeLaTeX（TeX Live 或 MiKTeX）与中文字体；Docker 方案已包含这些组件。
-- macOS/Linux 源码部署另需安装 Redis，参考 [开发说明](docs/development.md)。
+- macOS/Linux 源码部署参考 [开发说明](docs/development.md)。
 
 ## 第一次使用
 
@@ -167,7 +167,7 @@ pnpm build
 
 ## 许可与来源
 
-Remit 自有代码使用 [MIT](LICENSE)。第三方依赖、Windows Redis 运行库和导入技能保留各自许可。项目历史来源及适用范围请同时阅读 [NOTICE](NOTICE.md)、[第三方声明](THIRD_PARTY_NOTICES.md) 和 [来源审计](docs/originality-audit.md)。
+Remit 自有代码使用 [MIT](LICENSE)。第三方依赖和导入技能保留各自许可。项目历史来源及适用范围请同时阅读 [NOTICE](NOTICE.md)、[第三方声明](THIRD_PARTY_NOTICES.md) 和 [来源审计](docs/originality-audit.md)。
 
 ## Star History ⭐
 

@@ -363,7 +363,7 @@ def _remove_project(root: Path) -> None:
 async def delete_project(task_id: str, body: ProjectDelete) -> dict:
     """确认后删除归档项目，包括新对话的 SQLite 和旧任务档案。"""
     from app.routers import common_router, team_router, writing_router
-    from app.services.redis_manager import redis_manager
+    from app.services.task_bus import task_bus
 
     _resolve_task_directory(task_id)
     if common_router._task_is_scheduled(task_id):
@@ -378,8 +378,8 @@ async def delete_project(task_id: str, body: ProjectDelete) -> dict:
             raise HTTPException(409, "请先归档项目，再确认删除。")
         if common_router._task_is_scheduled(task_id):
             raise HTTPException(409, "项目仍在执行，请停止后再删除。")
-        # 不依赖 Redis 中存在消息；纯聊天项目也拥有独立的本地文件。
-        await redis_manager.delete_task_record(task_id)
+        # 不依赖消息档案存在；纯聊天项目也拥有独立的本地文件。
+        await task_bus.delete_task_record(task_id)
         await asyncio.to_thread(_remove_project, root)
     return {"task_id": task_id, "deleted": True}
 

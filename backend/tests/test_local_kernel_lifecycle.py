@@ -17,7 +17,7 @@ from app.tools.notebook_serializer import NotebookSerializer
 
 def make_interpreter(path, monkeypatch, timeout=15):
     monkeypatch.setattr(
-        "app.tools.local_interpreter.redis_manager.publish_message", AsyncMock()
+        "app.tools.local_interpreter.task_bus.publish_message", AsyncMock()
     )
     return LocalCodeInterpreter(
         "kernel-lifecycle", str(path), NotebookSerializer(str(path)), timeout=timeout

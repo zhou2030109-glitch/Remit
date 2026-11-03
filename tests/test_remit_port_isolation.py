@@ -34,8 +34,8 @@ class RemitPortIsolationTests(unittest.TestCase):
 
         self.assertIn('FRONTEND_URL = "http://127.0.0.1:15173/"', desktop)
         self.assertIn('BACKEND_URL = "http://127.0.0.1:18000/"', desktop)
+        self.assertNotIn("Redis", start)
         for script in (start, stop):
-            self.assertIn("$RedisPort = 16379", script)
             self.assertIn("$BackendPort = 18000", script)
             self.assertIn("$FrontendPort = 15173", script)
         self.assertIn('"--port", "$BackendPort"', start)
@@ -50,7 +50,6 @@ class RemitPortIsolationTests(unittest.TestCase):
         )
 
         for script in (start, stop):
-            self.assertIn("REDIS_PORT=16379", script)
             self.assertIn("BACKEND_PORT=18000", script)
             self.assertIn("FRONTEND_PORT=15173", script)
         self.assertIn("--port \"$BACKEND_PORT\"", start)
@@ -62,7 +61,7 @@ class RemitPortIsolationTests(unittest.TestCase):
             PROJECT_ROOT / "frontend" / ".env.example"
         )
 
-        self.assertEqual(backend_env["REDIS_URL"], "redis://localhost:16379/0")
+        self.assertNotIn("REDIS_URL", backend_env)
         self.assertEqual(backend_env["SERVER_HOST"], "http://localhost:18000")
         self.assertEqual(
             backend_env["CORS_ALLOW_ORIGINS"],

@@ -363,8 +363,8 @@ class DesktopApp:
                         isinstance(payload, dict)
                         and isinstance(payload.get("backend"), dict)
                         and payload["backend"].get("status") == "running"
-                        and isinstance(payload.get("redis"), dict)
-                        and payload["redis"].get("status") == "running"
+                        and isinstance(payload.get("task_bus"), dict)
+                        and payload["task_bus"].get("status") == "running"
                     ):
                         return True
             except (OSError, urllib.error.URLError, ValueError):

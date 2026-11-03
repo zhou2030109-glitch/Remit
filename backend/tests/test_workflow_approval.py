@@ -28,7 +28,7 @@ from app.routers.modeling_router import (
 )
 from app.schemas.request import Problem
 from app.schemas.response import ApprovalMessage, SystemMessage, UserMessage
-from app.services.redis_manager import RedisManager
+from app.services.task_bus import TaskBus
 
 
 class WorkflowApprovalTests(unittest.IsolatedAsyncioTestCase):
@@ -351,11 +351,11 @@ class WorkflowApprovalTests(unittest.IsolatedAsyncioTestCase):
                     return_value=(checkpoint, checkpoint.load()),
                 ),
                 patch(
-                    "app.routers.modeling_router.redis_manager.clear_cancellation_request",
+                    "app.routers.modeling_router.task_bus.clear_cancellation_request",
                     new=AsyncMock(),
                 ),
                 patch(
-                    "app.routers.modeling_router.redis_manager.publish_message",
+                    "app.routers.modeling_router.task_bus.publish_message",
                     new=AsyncMock(),
                 ),
             ):
@@ -399,7 +399,7 @@ class WorkflowApprovalTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(raised.exception.status_code, 422)
 
     async def test_message_status_distinguishes_waiting_from_running(self) -> None:
-        manager = RedisManager(messages_dir=Path(tempfile.mkdtemp()))
+        manager = TaskBus(messages_dir=Path(tempfile.mkdtemp()))
         messages = [
             UserMessage(content="赛题").model_dump(mode="json"),
             SystemMessage(content="任务开始处理").model_dump(mode="json"),

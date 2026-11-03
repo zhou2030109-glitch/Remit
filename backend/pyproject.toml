@@ -9,8 +9,6 @@ dependencies = [
     # Web 框架与实时通道
     "fastapi[standard]>=0.141.1",
     "uvicorn[standard]>=0.52.4",
-    # 状态存储（异步接口由 redis.asyncio 提供）
-    "redis>=5.2.1",
     # LLM 供应商 SDK 与 HTTP 客户端
     "openai>=1.65.4",
     "anthropic>=0.40.0",
