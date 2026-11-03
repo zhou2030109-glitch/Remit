@@ -155,31 +155,36 @@ class CoderAgentResilienceTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(agent.current_code_executions, 3)
             self.assertIn("实际指标仍由后续审查和用户验收", result.code_response)
 
-    async def test_multi_call_reply_is_rejected_without_executing_and_requests_serial(
-        self,
-    ):
+    async def test_multi_call_reply_keeps_only_first_call(self):
         agent = _make_agent()
-        valid = _tool_response("single", "disp(1)")
         multiple = StandardResponse(
             tool_calls=[
-                *valid.tool_calls,
+                *_tool_response("first", "disp(1)").tool_calls,
                 *_tool_response("second", "disp(2)").tool_calls,
             ]
         )
-        agent._chat = AsyncMock(side_effect=[multiple, valid])
-        with patch(
-            "app.core.agents.coder_agent.publish_activity", new_callable=AsyncMock
-        ) as activity:
-            result = await agent._call_model([{"type": "function"}])
-        self.assertIs(result, valid)
-        self.assertTrue(
-            all(
-                call.kwargs["parallel_tool_calls"] is False
-                for call in agent._chat.call_args_list
-            )
-        )
-        agent.code_interpreter.execute_code.assert_not_awaited()
-        self.assertIn("逐步执行", activity.call_args.args[1])
+        agent._chat = AsyncMock(return_value=multiple)
+        result = await agent._call_model([{"type": "function"}])
+        self.assertIs(result, multiple)
+        self.assertEqual([call.id for call in result.tool_calls], ["first"])
+        agent._chat.assert_awaited_once()
+        self.assertIs(agent._chat.call_args.kwargs["parallel_tool_calls"], False)
+
+    def test_tool_argument_variants_are_normalized(self):
+        cases = {
+            '{"code": "disp(1)"}': "disp(1)",
+            '```json\n{"code": "disp(2)",}\n```': "disp(2)",
+            '{"source": "disp(3)"}': "disp(3)",
+            '{"code": "", "script": "disp(4)"}': "disp(4)",
+            "disp(5)": "disp(5)",
+        }
+        for arguments, expected in cases.items():
+            with self.subTest(arguments=arguments):
+                call = ToolCall(id="c", name="execute_code", arguments=arguments)
+                self.assertEqual(CoderAgent._validated_code(call), expected)
+                self.assertEqual(json.loads(call.arguments), {"code": expected})
+        call = ToolCall(id="c", name="execute_code", arguments={"code": "disp(6)"})  # type: ignore[arg-type]
+        self.assertEqual(CoderAgent._validated_code(call), "disp(6)")
 
     async def test_same_node_quality_repair_keeps_observed_schema_and_fixed_code(self):
         agent = _make_agent(max_code_executions=2)

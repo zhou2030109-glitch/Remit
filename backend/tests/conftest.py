@@ -1,6 +1,10 @@
 """单元测试隔离本机任务档案和 Redis，禁止污染正在使用的工作区。"""
 
-import pytest
+import os
+
+os.environ["REMIT_FILE_LOG"] = "0"
+
+import pytest  # noqa: E402
 
 from app.services.message_archive import MessageArchive
 from app.services.redis_manager import redis_manager

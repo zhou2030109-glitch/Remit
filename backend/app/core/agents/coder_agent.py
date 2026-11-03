@@ -17,6 +17,7 @@ from app.core.activity import publish_activity
 from app.core.deliverable_contract import DeliverableValidationError
 from app.core.agents.agent import Agent, _message_tokens
 from app.core.functions import get_coder_tools
+from app.core.json_recovery import decode_json_object
 from app.core.llm.llm import LLM
 from app.core.llm.errors import NonRetryableLLMError
 from app.core.prompts.shared import get_reflection_prompt
@@ -35,6 +36,9 @@ from app.services.async_io import run_blocking
 from app.tools.base_interpreter import BaseCodeInterpreter
 from app.utils.common_utils import get_current_files
 from app.utils.log_util import logger
+
+
+_CODE_ARGUMENT_KEYS = ("code", "source", "script", "python", "matlab", "program")
 
 
 class CoderAgentRunError(RuntimeError):
@@ -435,7 +439,10 @@ class CoderAgent(Agent):
                 budget = expanded_output_budget(budget)
                 self._response_token_budget = budget
             elif response.tool_calls:
-                if len(response.tool_calls) != 1 or not tools:
+                if tools and len(response.tool_calls) > 1:
+                    # 只执行第一个调用；其余调用依赖它的输出，模型看到结果后会重发。
+                    response.tool_calls = response.tool_calls[:1]
+                if not tools:
                     error = "当前响应必须只包含一个允许的工具调用"
                 else:
                     try:
@@ -477,21 +484,37 @@ class CoderAgent(Agent):
 
     @staticmethod
     def _validated_code(tool_call: Any) -> str:
-        """校验不可信工具参数，避免缺字段或错误类型进入执行器。"""
+        """校验不可信工具参数，容忍常见格式偏差，避免缺字段或错误类型进入执行器。"""
         if tool_call.name != "execute_code":
             raise ValueError("只允许 execute_code 工具")
-        if (
-            not isinstance(tool_call.arguments, str)
-            or len(tool_call.arguments) > 1_000_000
-        ):
+        raw = tool_call.arguments
+        if isinstance(raw, dict):
+            arguments: Any = raw
+        elif not isinstance(raw, str) or len(raw) > 1_000_000:
             raise ValueError("工具参数必须为不超过 1000000 字符的 JSON 字符串")
-        try:
-            arguments = json.loads(tool_call.arguments)
-        except (ValueError, RecursionError) as exc:
-            raise ValueError("工具参数不是有效 JSON") from exc
-        code = arguments.get("code") if isinstance(arguments, dict) else None
+        else:
+            try:
+                arguments = json.loads(raw)
+            except (ValueError, RecursionError):
+                arguments = decode_json_object(raw)
+                if arguments is None:
+                    if raw.strip()[:1] in {"{", "[", ""}:
+                        raise ValueError("工具参数不是有效 JSON") from None
+                    # 部分接入点把源码直接作为参数字符串返回
+                    arguments = {"code": raw}
+        code = None
+        if isinstance(arguments, dict):
+            code = next(
+                (
+                    arguments[key]
+                    for key in _CODE_ARGUMENT_KEYS
+                    if isinstance(arguments.get(key), str) and arguments[key].strip()
+                ),
+                arguments.get("code"),
+            )
         if not isinstance(code, str) or not code.strip():
             raise ValueError("execute_code 缺少非空字符串 code 参数")
+        tool_call.arguments = json.dumps({"code": code}, ensure_ascii=False)
         return code
 
     async def _finalize_at_execution_limit(

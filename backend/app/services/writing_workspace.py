@@ -41,13 +41,17 @@ def now() -> str:
 
 
 def write_json(path: Path, value: Any) -> None:
-    """原子替换 JSON，避免读取到一半状态。"""
+    """原子替换 JSON 并落盘，断电后只会看到旧版本或新版本。"""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    temporary.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    temporary.replace(path)
+    try:
+        with temporary.open("w", encoding="utf-8") as handle:
+            json.dump(value, handle, ensure_ascii=False, indent=2)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def read_json(path: Path) -> dict[str, Any]:

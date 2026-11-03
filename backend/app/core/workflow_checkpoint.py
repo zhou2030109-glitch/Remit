@@ -135,14 +135,10 @@ class WorkflowCheckpoint:
         Args:
             state: 待持久化状态。
         """
-        self.work_dir.mkdir(parents=True, exist_ok=True)
+        from app.services.writing_workspace import write_json
+
         state["updated_at"] = self._now()
-        temp_path = self.path.with_suffix(".json.tmp")
-        temp_path.write_text(
-            json.dumps(state, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        temp_path.replace(self.path)
+        write_json(self.path, state)
         from app.services.team_state import checkpoint_event
 
         checkpoint_event(self.work_dir, state)

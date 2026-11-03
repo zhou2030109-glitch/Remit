@@ -110,3 +110,21 @@ def _describe_error(error, root, state, retrying, attempts):
         )
         + ([] if retrying or code == "MODEL_STAGE_BUDGET" else ["resume"]),
     }
+
+
+def withdraw_retry(root: Path) -> None:
+    """自动续跑未能真正调度时撤回 retrying，恢复手动续跑入口。"""
+    from app.services.writing_workspace import read_json, write_json
+
+    path = root / ".runtime-failure.json"
+    if not path.is_file():
+        return
+    failure = read_json(path)
+    if not failure.get("retrying"):
+        return
+    failure["retrying"] = False
+    actions = list(failure.get("actions") or [])
+    if failure.get("code") != "MODEL_STAGE_BUDGET" and "resume" not in actions:
+        actions.append("resume")
+    failure["actions"] = actions
+    write_json(path, failure)

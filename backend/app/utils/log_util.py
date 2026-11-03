@@ -4,6 +4,7 @@
 其他模块统一 ``from app.utils.log_util import logger``。
 """
 
+import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -19,12 +20,16 @@ _FORMAT = (
 
 
 def _configure() -> "_logger":
-    """装配 loguru：stderr 彩色输出 + 按天滚动的错误日志文件。"""
-    log_dir = Path.cwd() / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
+    """装配 loguru：stderr 彩色输出 + 按天滚动的错误日志文件。
 
+    ``REMIT_FILE_LOG=0`` 关闭文件日志（测试用），``REMIT_LOG_DIR`` 指定目录。
+    """
     _logger.remove()
     _logger.add(sys.stderr, format=_FORMAT, enqueue=False)
+    if os.environ.get("REMIT_FILE_LOG", "1") == "0":
+        return _logger
+    log_dir = Path(os.environ.get("REMIT_LOG_DIR") or Path.cwd() / "logs")
+    log_dir.mkdir(parents=True, exist_ok=True)
     _logger.add(
         log_dir / f"{date.today():%Y-%m-%d}_error.log",
         format=_FORMAT,

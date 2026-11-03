@@ -727,6 +727,8 @@ async def run_modeling_task_async(
             try:
                 await workflow.cleanup()
             except Exception as cleanup_error:
+                if retry_delay is not None:
+                    _withdraw_retry(workflow.work_dir)
                 retry_delay = None
                 logger.exception(
                     f"清理任务 {task_id} 的代码解释器失败: "
@@ -734,6 +736,8 @@ async def run_modeling_task_async(
                 )
             else:
                 if cancelled or task_id in _pending_cancellations:
+                    if retry_delay is not None:
+                        _withdraw_retry(workflow.work_dir)
                     retry_delay = None
                     _auto_resume_counts.pop(task_id, None)
                     workflow.mark_status("stopped")
@@ -767,6 +771,15 @@ async def run_modeling_task_async(
             )
             _auto_resume_handles.add(resume_handle)
             resume_handle.add_done_callback(_auto_resume_handles.discard)
+
+
+def _withdraw_retry(work_dir) -> None:
+    from app.services.task_failure import withdraw_retry
+
+    try:
+        withdraw_retry(Path(work_dir))
+    except (OSError, ValueError) as error:
+        logger.warning(f"撤回自动续跑标记失败: {error}")
 
 
 async def _auto_resume_after_failure(
@@ -821,6 +834,7 @@ async def _auto_resume_after_failure(
         )
     except Exception as exc:
         logger.error(f"任务 {task_id} 自动续跑调度失败: {exc}")
+        _withdraw_retry(checkpoint.work_dir)
     finally:
         _scheduled_tasks.discard(task_id)
         _pending_cancellations.discard(task_id)
