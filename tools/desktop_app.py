@@ -13,6 +13,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
 from ctypes import wintypes
 from pathlib import Path
 from typing import Any
@@ -144,6 +145,7 @@ class DesktopApp:
         self.exit_requested = False
         self.shutdown_event = threading.Event()
         self.service_lock = threading.Lock()
+        self.service_owner = uuid.uuid4().hex
         self.settings = self._load_settings()
 
     def run(self) -> None:
@@ -269,53 +271,31 @@ class DesktopApp:
             if self.shutdown_event.is_set():
                 return False
             logging.info("Desktop service bootstrap started")
-            self._set_status("正在清理上次未正常退出的服务…", 16)
-            cleanup = subprocess.run(
-                [
-                    "powershell.exe",
-                    "-NoProfile",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-File",
-                    str(STOP_SCRIPT),
-                ],
-                cwd=ROOT,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=30,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                check=False,
-            )
-            if cleanup.returncode != 0:
-                raise RuntimeError(
-                    f"无法清理上次残留的后台服务（代码 {cleanup.returncode}）"
+            self._set_status("正在检查并启动本地服务…", 28)
+            LOG_DIR.mkdir(parents=True, exist_ok=True)
+            with (LOG_DIR / "desktop-services.log").open("ab") as log:
+                completed = subprocess.run(
+                    [
+                        "powershell.exe",
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-File",
+                        str(START_SCRIPT),
+                        "-OwnerToken",
+                        self.service_owner,
+                    ],
+                    cwd=ROOT,
+                    stdin=subprocess.DEVNULL,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    timeout=60,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    check=False,
                 )
-            logging.info("Stale desktop services cleaned up")
-
-            if self.shutdown_event.is_set():
-                return False
-            self._set_status("正在启动 Redis、后端和前端…", 28)
-            completed = subprocess.run(
-                [
-                    "powershell.exe",
-                    "-NoProfile",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-File",
-                    str(START_SCRIPT),
-                ],
-                cwd=ROOT,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=30,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                check=False,
-            )
             if completed.returncode != 0:
                 raise RuntimeError(
-                    f"后台服务启动器返回失败（代码 {completed.returncode}）"
+                    f"后台服务启动器返回失败（代码 {completed.returncode}）；详见 desktop-services.log"
                 )
             logging.info("Service launcher returned successfully")
             return not self.shutdown_event.is_set()
@@ -383,6 +363,8 @@ class DesktopApp:
                         isinstance(payload, dict)
                         and isinstance(payload.get("backend"), dict)
                         and payload["backend"].get("status") == "running"
+                        and isinstance(payload.get("redis"), dict)
+                        and payload["redis"].get("status") == "running"
                     ):
                         return True
             except (OSError, urllib.error.URLError, ValueError):
@@ -531,7 +513,7 @@ class DesktopApp:
             exit_option.Location = Point(48, 162)
 
             exit_hint = Label()
-            exit_hint.Text = "关闭工作台并停止 Redis、后端和前端"
+            exit_hint.Text = "关闭工作台，并停止本窗口启动的服务"
             exit_hint.AutoSize = True
             exit_hint.ForeColor = Color.FromArgb(100, 116, 139)
             exit_hint.Location = Point(76, 192)
@@ -603,10 +585,9 @@ class DesktopApp:
             encoding="utf-8",
         )
 
-    @staticmethod
-    def _stop_services() -> None:
+    def _stop_services(self) -> None:
         try:
-            subprocess.run(
+            completed = subprocess.run(
                 [
                     "powershell.exe",
                     "-NoProfile",
@@ -614,6 +595,8 @@ class DesktopApp:
                     "Bypass",
                     "-File",
                     str(STOP_SCRIPT),
+                    "-OwnerToken",
+                    self.service_owner,
                 ],
                 cwd=ROOT,
                 capture_output=True,
@@ -621,6 +604,9 @@ class DesktopApp:
                 creationflags=subprocess.CREATE_NO_WINDOW,
                 check=False,
             )
+            if completed.returncode != 0:
+                logging.error("Stopping desktop services failed (exit %s): %s",
+                              completed.returncode, completed.stderr)
         except Exception:
             logging.exception("Stopping desktop services failed")
 

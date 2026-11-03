@@ -721,9 +721,10 @@ class WorkflowCheckpoint:
             (self.work_dir / "method_recommendations.json").unlink(missing_ok=True)
         elif node_id == "modeler":
             state["modeler_response"] = None
-            state.pop("modeler_primary_response", None)
-            state.pop("model_scout_proposal", None)
-            state.pop("model_council", None)
+            if not preserve_selected_artifacts:
+                state.pop("modeler_primary_response", None)
+                state.pop("model_scout_proposal", None)
+                state.pop("model_council", None)
             state["model_revision_history"] = {}
             state["model_execution_reviews"] = {}
             state["solution_results"] = {}

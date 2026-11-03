@@ -23,6 +23,8 @@ class WindowsStopLauncherTests(unittest.TestCase):
         stale: bool = False,
         listener: str = "none",
         generated: bool = False,
+        owner: str = "",
+        requested_owner: str = "",
     ) -> tuple[list[int], str]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -44,6 +46,8 @@ class WindowsStopLauncherTests(unittest.TestCase):
                         "stale": stale,
                         "listener": listener,
                         "generated": generated,
+                        "owner": owner,
+                        "requested_owner": requested_owner,
                     }
                 ),
                 encoding="utf-8",
@@ -80,6 +84,7 @@ if ($fixture.identity) {
         ExecutablePath = "C:\Windows\System32\cmd.exe"
         ProjectRoot = $PSScriptRoot
         Service = "frontend"
+        OwnerToken = $fixture.owner
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $PSScriptRoot "logs\frontend.pid.json")
 }
 function Get-Process {
@@ -108,7 +113,7 @@ function taskkill.exe {
     $script:killed += [int]$args[1]
     $global:LASTEXITCODE = 0
 }
-. (Join-Path $PSScriptRoot "tools\stop_services.ps1")
+. (Join-Path $PSScriptRoot "tools\stop_services.ps1") -OwnerToken $fixture.requested_owner
 Write-Output ("KILLED=" + (ConvertTo-Json -InputObject @($script:killed) -Compress))
 """,
                 encoding="utf-8-sig",
@@ -130,8 +135,9 @@ Write-Output ("KILLED=" + (ConvertTo-Json -InputObject @($script:killed) -Compre
                 check=False,
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertFalse((root / "logs" / "frontend.pid").exists())
-            self.assertFalse((root / "logs" / "frontend.pid.json").exists())
+            preserved = bool(requested_owner and requested_owner != owner)
+            self.assertEqual((root / "logs" / "frontend.pid").exists(), preserved)
+            self.assertEqual((root / "logs" / "frontend.pid.json").exists(), preserved and identity)
             line = next(
                 line
                 for line in result.stdout.splitlines()
@@ -142,6 +148,29 @@ Write-Output ("KILLED=" + (ConvertTo-Json -InputObject @($script:killed) -Compre
     def test_reused_pid_is_not_terminated(self) -> None:
         killed, _ = self.run_stopper(identity=True, stale=True)
         self.assertEqual(killed, [])
+
+    def test_desktop_leaves_preexisting_service_and_records_intact(self) -> None:
+        killed, _ = self.run_stopper(identity=True, owner="browser", requested_owner="desktop")
+        self.assertEqual(killed, [])
+
+    def test_desktop_stops_its_own_service(self) -> None:
+        killed, _ = self.run_stopper(identity=True, owner="desktop", requested_owner="desktop")
+        self.assertEqual(killed, [31001])
+
+    def test_desktop_does_not_claim_legacy_listener_on_exit(self) -> None:
+        killed, _ = self.run_stopper(listener="owned", requested_owner="desktop")
+        self.assertEqual(killed, [])
+
+    def test_desktop_stale_record_does_not_claim_replacement_listener(self) -> None:
+        killed, _ = self.run_stopper(
+            identity=True, stale=True, listener="owned",
+            owner="desktop", requested_owner="desktop",
+        )
+        self.assertEqual(killed, [])
+
+    def test_manual_stop_can_find_listener_after_record_expires(self) -> None:
+        killed, _ = self.run_stopper(identity=True, stale=True, listener="owned")
+        self.assertEqual(killed, [32002])
 
     def test_matching_identity_terminates_recorded_process_tree(self) -> None:
         killed, _ = self.run_stopper(identity=True)

@@ -169,10 +169,10 @@ def test_uses_own_python_despite_foreign_kernel_spec(tmp_path, monkeypatch):
             await interpreter.initialize()
             marks = await asyncio.to_thread(
                 interpreter._run_raw,
-                "import sys\nfrom pathlib import Path\nPath('runtime.txt').write_text(sys.executable)\nprint('RUNTIME_VERIFIED')",
+                "import sys\nfrom pathlib import Path\nPath('runtime.txt').write_text(sys.executable, encoding='utf-8')\nprint('RUNTIME_VERIFIED')",
             )
             assert (
-                Path((tmp_path / "runtime.txt").read_text()).resolve()
+                Path((tmp_path / "runtime.txt").read_text(encoding="utf-8")).resolve()
                 == Path(sys.executable).resolve()
             )
             assert any("RUNTIME_VERIFIED" in value for _, value in marks)

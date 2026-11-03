@@ -53,6 +53,9 @@ export function useTeamStream(
 	let disposed = false;
 	let interrupted = false;
 	let invalidFrame = false;
+	let cursor = 0;
+	let reconnectAttempts = 0;
+	let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 	let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 	let flashTimer: ReturnType<typeof setTimeout> | undefined;
 	let longTimer: ReturnType<typeof setTimeout> | undefined;
@@ -68,6 +71,8 @@ export function useTeamStream(
 	}
 	function close() {
 		clearConnectionTimers();
+		clearTimeout(reconnectTimer);
+		reconnectTimer = undefined;
 		clearTimeout(batchTimer);
 		batchTimer = undefined;
 		pendingState = null;
@@ -83,14 +88,21 @@ export function useTeamStream(
 		const events = [...pendingEvents.values()];
 		pendingEvents.clear();
 		pendingState = null;
-		if (!disposed && stream && state) apply(events, state);
+		if (!disposed && stream && state) {
+			apply(events, state);
+			for (const event of events) cursor = Math.max(cursor, event.seq);
+		}
 	}
 	function open(taskId: string) {
 		close();
 		if (disposed) return;
 		interrupted = invalidFrame = false;
+		cursor = reconnectAttempts = 0;
 		connection.value = "连接中";
-		const current = new EventSource(teamStreamUrl(taskId));
+		connect(taskId);
+	}
+	function connect(taskId: string) {
+		const current = new EventSource(teamStreamUrl(taskId, cursor));
 		stream = current;
 		const active = () => !disposed && stream === current;
 		current.addEventListener("deleted", () => {
@@ -101,6 +113,7 @@ export function useTeamStream(
 		current.onopen = () => {
 			if (!active()) return;
 			clearConnectionTimers();
+			reconnectAttempts = 0;
 			connection.value = interrupted ? "已重新连接" : "实时同步";
 			if (interrupted)
 				flashTimer = setTimeout(() => {
@@ -112,10 +125,13 @@ export function useTeamStream(
 			if (!active()) return;
 			clearTimeout(flashTimer);
 			if (current.readyState === EventSource.CLOSED) {
-				close();
-				connection.value =
-					"页面同步已停止，请确认项目仍存在、本地服务可用后刷新页面；此状态不会停止后台任务";
-				return;
+				flush();
+				stream = null;
+				current.close();
+				reconnectTimer = setTimeout(() => {
+					reconnectTimer = undefined;
+					if (!disposed) connect(taskId);
+				}, Math.min(1000 * 2 ** reconnectAttempts++, 30000));
 			}
 			// Repeated native retries must not postpone the first disconnect notice.
 			if (noticeTimer !== undefined || interrupted) return;
@@ -123,10 +139,10 @@ export function useTeamStream(
 				noticeTimer = undefined;
 				interrupted = true;
 				connection.value =
-					"页面同步暂时断开，正在自动重连；建模与写作在后台照常进行，恢复后自动补齐消息";
+					"页面同步暂时断开，正在自动重连；恢复后自动补齐消息并读取任务状态";
 				longTimer = setTimeout(() => {
 					connection.value =
-						"同步仍未恢复：后台任务不受影响；如持续数分钟，请确认本地服务在运行后刷新页面";
+						"同步仍未恢复，正在继续重连；请确认项目仍存在、本地服务正在运行";
 				}, 30000);
 			}, 4000);
 		};

@@ -11,7 +11,7 @@ class Stream {
 	onmessage: ((event: { data: string }) => void) | null = null;
 	close = vi.fn();
 	addEventListener = vi.fn();
-	constructor() {
+	constructor(readonly url: string) {
 		Stream.latest = this;
 	}
 	update(value: unknown) {
@@ -72,6 +72,42 @@ describe("实时连接生命周期", () => {
 		} finally {
 			scope.stop();
 		}
+	});
+	it("连接被浏览器彻底关闭后按已交付序号重连，不漏掉缓冲消息", async () => {
+		const { scope, api, apply, stream } = setup();
+		try {
+			stream.update({ state, events: [event] });
+			stream.readyState = Stream.CLOSED;
+			stream.onerror?.();
+			expect(apply).toHaveBeenCalledExactlyOnceWith([event], state);
+			await vi.advanceTimersByTimeAsync(1000);
+			const replacement = Stream.latest;
+			expect(replacement).not.toBe(stream);
+			expect(replacement.url).toContain("after=1");
+			replacement.onopen?.();
+			replacement.update({ state, events: [{ ...event, seq: 2 }] });
+			expect(apply).toHaveBeenLastCalledWith([{ ...event, seq: 2 }], state);
+			await vi.advanceTimersByTimeAsync(40000);
+			expect(api.connection.value).toBe("实时同步");
+		} finally {
+			scope.stop();
+		}
+	});
+	it("关闭页面取消关闭连接的重试，重复失败逐渐延长等待", async () => {
+		const { scope, stream } = setup();
+		stream.readyState = Stream.CLOSED;
+		stream.onerror?.();
+		await vi.advanceTimersByTimeAsync(1000);
+		const replacement = Stream.latest;
+		expect(replacement).not.toBe(stream);
+		replacement.readyState = Stream.CLOSED;
+		replacement.onerror?.();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(Stream.latest).toBe(replacement);
+		scope.stop();
+		await vi.advanceTimersByTimeAsync(40000);
+		expect(Stream.latest).toBe(replacement);
+		expect(vi.getTimerCount()).toBe(0);
 	});
 	it("异常与串项目消息不污染缓冲，下一条有效消息恢复同步", () => {
 		const { scope, api, apply, stream } = setup();

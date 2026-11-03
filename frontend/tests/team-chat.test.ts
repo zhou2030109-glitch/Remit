@@ -107,6 +107,36 @@ const event: TeamEvent = {
 };
 
 describe("团队对话调度与恢复", () => {
+	it("首次读取状态失败仍建立事件流，服务恢复后自动显示项目", async () => {
+		api.getTeamState.mockRejectedValueOnce(new Error("服务正在启动"));
+		const previous = Stream.latest;
+		const wrapper = mount(TeamChat, { props: { task_id: "project-1" } });
+		try {
+			await flushPromises();
+			expect(Stream.latest).not.toBe(previous);
+			Stream.latest.update({ state, events: [{ ...event, kind: "reply", content: "连接恢复后的结果" }] });
+			await flushPromises();
+			expect(wrapper.text()).toContain("连接恢复后的结果");
+			expect(wrapper.text()).toContain("预测项目");
+			expect(wrapper.text()).not.toContain("服务正在启动");
+		} finally { wrapper.unmount(); }
+	});
+	it("消息超时后阶段变化不改变重试正文或幂等编号", async () => {
+		api.sendTeamMessage.mockRejectedValueOnce(new Error("网络中断"));
+		const wrapper = mount(TeamChat, { props: { task_id: "project-1" } });
+		try {
+			await flushPromises();
+			await wrapper.get(".composer textarea").setValue("检查计算进度");
+			await wrapper.get("button[aria-label='发送']").trigger("click");
+			await flushPromises();
+			const first = api.sendTeamMessage.mock.calls[0][1];
+			Stream.latest.update({ state: { ...state, status: "running", preflight: { id: "new-plan", understanding: "计划已更新", steps: [], questions: [], attachments: [] } }, events: [] });
+			await flushPromises();
+			await wrapper.get("button[aria-label='发送']").trigger("click");
+			await flushPromises();
+			expect(api.sendTeamMessage.mock.calls[1][1]).toEqual(first);
+		} finally { wrapper.unmount(); }
+	});
 	it("浏览器禁止存储时仍可打开项目、切换导航和发送消息", async () => {
 		const denied = () => { throw new DOMException("Storage blocked", "SecurityError"); };
 		const read = vi.spyOn(Storage.prototype, "getItem").mockImplementation(denied);
@@ -336,17 +366,18 @@ describe("团队对话调度与恢复", () => {
 		expect(wrapper.text()).toContain("先核对输入数据的单位与边界约束。");
 		wrapper.unmount();
 	});
-	it("服务拒绝后已关闭的事件流不再声称自动重连或重启任务", async () => {
+	it("服务拒绝后重新建立同步连接，不自动重启任务", async () => {
 		vi.useFakeTimers();
 		const wrapper = mount(TeamChat, { props: { task_id: "project-1" } });
 		try {
 			await vi.advanceTimersByTimeAsync(0);
-			Stream.latest.readyState = Stream.CLOSED;
-			Stream.latest.onerror?.();
+			const previous = Stream.latest;
+			previous.readyState = Stream.CLOSED;
+			previous.onerror?.();
 			await vi.advanceTimersByTimeAsync(60000);
-			expect(Stream.latest.close).toHaveBeenCalledTimes(1);
-			expect(wrapper.text()).toContain("页面同步已停止");
-			expect(wrapper.text()).not.toContain("自动重连");
+			expect(previous.close).toHaveBeenCalledTimes(1);
+			expect(Stream.latest).not.toBe(previous);
+			expect(wrapper.text()).toContain("同步仍未恢复，正在继续重连");
 			expect(api.sendTeamMessage).not.toHaveBeenCalled();
 			expect(api.submitModelingTask).not.toHaveBeenCalled();
 		} finally {
@@ -1023,7 +1054,7 @@ describe("团队对话调度与恢复", () => {
 			).map((item) => item.seq),
 		).toEqual([1, 2, 3]);
 	});
-	it("瞬时断线不提示，持续中断说明后台不受影响，恢复后短暂确认", async () => {
+	it("瞬时断线不提示，持续中断说明恢复方式，恢复后短暂确认", async () => {
 		vi.useFakeTimers();
 		try {
 			const wrapper = mount(TeamChat, { props: { task_id: "project-1" } });
@@ -1039,7 +1070,7 @@ describe("团队对话调度与恢复", () => {
 			expect(wrapper.text()).not.toContain("自动重连");
 			await vi.advanceTimersByTimeAsync(2500);
 			expect(wrapper.text()).toContain("页面同步暂时断开，正在自动重连");
-			expect(wrapper.text()).toContain("后台照常进行");
+			expect(wrapper.text()).toContain("恢复后自动补齐消息并读取任务状态");
 			// 恢复：短暂显示已重新连接，随后回到实时同步
 			Stream.latest.onopen?.();
 			await vi.advanceTimersByTimeAsync(0);

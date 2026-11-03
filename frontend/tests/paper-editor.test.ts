@@ -53,6 +53,50 @@ describe("论文编辑器保存与编译", () => {
 		api.compilePaper.mockResolvedValue({ data: { status: "completed" } });
 	});
 	afterEach(() => vi.useRealTimers());
+	it("初次连接失败后轮询恢复源码，未载入时禁止编辑空白内容", async () => {
+		api.getPaperWorkspace.mockRejectedValueOnce(new Error("连接中断"));
+		const wrapper = mount(PaperEditor, { props: { task_id: "test" } });
+		try {
+			await flushPromises();
+			expect(wrapper.get<HTMLTextAreaElement>(".code-input").element.disabled).toBe(true);
+			await vi.advanceTimersByTimeAsync(4000);
+			await flushPromises();
+			expect(api.getPaperSource).toHaveBeenCalledWith("test", "main.tex");
+			expect(wrapper.get<HTMLTextAreaElement>(".code-input").element.value).toBe("initial");
+			expect(wrapper.text()).not.toContain("连接中断");
+		} finally { wrapper.unmount(); }
+	});
+	it("等待源码保存时重复编译只发起一次请求", async () => {
+		let finish!: (value: unknown) => void;
+		api.savePaperSource.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+		const wrapper = mount(PaperEditor, { props: { task_id: "test" } });
+		try {
+			await flushPromises();
+			await wrapper.get(".code-input").setValue("updated");
+			await wrapper.get(".compile-button").trigger("click");
+			await wrapper.get(".compile-button").trigger("click");
+			finish({ data: { version: "saved", revision: "saved" } });
+			await flushPromises();
+			expect(api.compilePaper).toHaveBeenCalledOnce();
+		} finally { wrapper.unmount(); }
+	});
+	it("保存尚未返回时停止编译，保存返回后也不会启动编译", async () => {
+		let finish!: (value: unknown) => void;
+		api.savePaperSource.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+		api.cancelPaper.mockResolvedValue({ data: { status: "cancelled" } });
+		const wrapper = mount(PaperEditor, { props: { task_id: "test" } });
+		try {
+			await flushPromises();
+			await wrapper.get(".code-input").setValue("updated");
+			await wrapper.get(".compile-button").trigger("click");
+			await wrapper.get('[aria-label="停止论文编译"]').trigger("click");
+			await flushPromises();
+			finish({ data: { version: "saved", revision: "saved" } });
+			await flushPromises();
+			expect(api.compilePaper).not.toHaveBeenCalled();
+			expect(wrapper.get<HTMLTextAreaElement>(".code-input").element.value).toBe("updated");
+		} finally { wrapper.unmount(); }
+	});
 	it("慢请求不堆积轮询，离开页面后不再安排刷新", async () => {
 		const response = await api.getPaperWorkspace();
 		api.getPaperWorkspace.mockClear();

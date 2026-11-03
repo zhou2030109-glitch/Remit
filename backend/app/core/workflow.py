@@ -248,6 +248,7 @@ class RemitWorkFlow(WorkFlow):
         """
         if self.checkpoint is not None and status in {
             "running",
+            "stopping",
             "awaiting_approval",
             "stopped",
             "failed",
@@ -793,14 +794,27 @@ class RemitWorkFlow(WorkFlow):
                     ).strip()
                 }
             )
+        if revision_feedback:
+            cache_revision = {
+                "count": state.get("revision_counts", {}).get("modeler", 0),
+                "feedback": revision_feedback,
+            }
+            if state.get("modeler_cache_revision") != cache_revision:
+                for cached_key in (
+                    "method_recommendations",
+                    "modeler_primary_response",
+                    "model_scout_proposal",
+                    "model_council",
+                ):
+                    state.pop(cached_key, None)
+                state["modeler_cache_revision"] = cache_revision
+                self.checkpoint.save(state)
         method_artifacts: list[str] = []
         if (
             settings.METHOD_RETRIEVAL_ENABLED
             and coordinator_response.task_purpose != "numerical_verification"
         ):
-            cached_methods = (
-                None if revision_feedback else state.get("method_recommendations")
-            )
+            cached_methods = state.get("method_recommendations")
             if isinstance(cached_methods, dict) and cached_methods:
                 method_recommendations = cached_methods
                 MethodSelectionEngine.persist_payload(
@@ -843,12 +857,8 @@ class RemitWorkFlow(WorkFlow):
                 self.task_id,
                 SystemMessage(content="模型评审组已启动：主建模与独立候选探索并行进行"),
             )
-            cached_primary = (
-                None if revision_feedback else state.get("modeler_primary_response")
-            )
-            cached_scout = (
-                None if revision_feedback else state.get("model_scout_proposal")
-            )
+            cached_primary = state.get("modeler_primary_response")
+            cached_scout = state.get("model_scout_proposal")
             if cached_primary and cached_scout:
                 primary_response = ModelerToCoder.model_validate(cached_primary)
                 scout_proposal = ModelScoutProposal.model_validate(cached_scout)
@@ -859,23 +869,51 @@ class RemitWorkFlow(WorkFlow):
                     ),
                 )
             else:
-                primary_task = asyncio.create_task(
-                    modeler_agent.run(coordinator_response)
-                )
-                scout_task = asyncio.create_task(
-                    model_council.propose(coordinator_response)
-                )
-                primary_response, scout_proposal = await asyncio.gather(
-                    primary_task, scout_task
-                )
-                state["modeler_primary_response"] = primary_response.model_dump(
-                    mode="json"
-                )
-                state["model_scout_proposal"] = scout_proposal.model_dump(mode="json")
                 state.pop("model_council", None)
                 self.checkpoint.save(state)
 
-            cached_council = None if revision_feedback else state.get("model_council")
+                async def primary_plan():
+                    if cached_primary:
+                        return ModelerToCoder.model_validate(cached_primary)
+                    response = await modeler_agent.run(coordinator_response)
+                    state["modeler_primary_response"] = response.model_dump(mode="json")
+                    self.checkpoint.save(state)
+                    return response
+
+                async def scout_plan():
+                    if cached_scout:
+                        return ModelScoutProposal.model_validate(cached_scout)
+                    response = await model_council.propose(coordinator_response)
+                    state["model_scout_proposal"] = response.model_dump(mode="json")
+                    self.checkpoint.save(state)
+                    return response
+
+                planning_tasks = [
+                    asyncio.create_task(primary_plan()),
+                    asyncio.create_task(scout_plan()),
+                ]
+                planning_result = asyncio.gather(*planning_tasks)
+                try:
+                    primary_response, scout_proposal = await asyncio.shield(
+                        planning_result
+                    )
+                finally:
+                    for planning_task in planning_tasks:
+                        if not planning_task.done():
+                            planning_task.cancel()
+                    cleanup = asyncio.gather(*planning_tasks, return_exceptions=True)
+                    cancelled = False
+                    while not cleanup.done():
+                        try:
+                            await asyncio.shield(cleanup)
+                        except asyncio.CancelledError:
+                            cancelled = True
+                    if not planning_result.cancelled():
+                        planning_result.exception()
+                    if cancelled:
+                        raise asyncio.CancelledError
+
+            cached_council = state.get("model_council")
             if cached_council:
                 council_result = ModelCouncilResult.model_validate(cached_council)
                 await redis_manager.publish_message(

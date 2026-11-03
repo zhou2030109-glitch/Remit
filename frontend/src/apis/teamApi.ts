@@ -15,6 +15,9 @@ export interface ModelBudgetSnapshot extends ExecutionBudgetSnapshot {
     elapsed_seconds: number;
     seconds_limit: number;
     remaining_seconds: number;
+    minimum_request_seconds: number;
+    reserved_calls: number;
+    reserved_seconds: number;
     can_resume: boolean;
 }
 export interface ModelBudgetExtension {

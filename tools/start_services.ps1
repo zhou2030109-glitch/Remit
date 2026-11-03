@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 param(
     [switch]$Visible,
-    [switch]$Check
+    [switch]$Check,
+    [string]$OwnerToken = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -122,6 +123,7 @@ function Save-ServicePid([string]$Name, [System.Diagnostics.Process]$Process) {
         ExecutablePath = $executablePath
         ProjectRoot = $Root
         Service = $Name
+        OwnerToken = $OwnerToken
     }
     $identity | ConvertTo-Json | Set-Content -LiteralPath "$pidPath.json" -Encoding UTF8
     Set-Content -LiteralPath $pidPath -Value $Process.Id -Encoding ascii -NoNewline
@@ -192,12 +194,20 @@ Write-Host " Remit: Redis + FastAPI + Vue"
 Write-Host " Mode: $(if ($Visible) { 'visible terminals' } else { 'hidden background services' })"
 Write-Host "=============================================="
 
+$appendOnly = if ((Test-Path -LiteralPath (Join-Path $RedisDirectory "appendonlydir\appendonly.aof.manifest")) -or
+    (Test-Path -LiteralPath (Join-Path $RedisDirectory "appendonly.aof"))) { "yes" } else { "no" }
+
 Start-ProjectService `
     -Name "redis" `
     -Port $RedisPort `
     -FilePath $RedisExecutable `
-    -ArgumentList @("--port", "$RedisPort", "--bind", "127.0.0.1", "::1") `
+    -ArgumentList @("--port", "$RedisPort", "--bind", "127.0.0.1", "::1", "--appendonly", $appendOnly, "--appendfsync", "everysec") `
     -WorkingDirectory $RedisDirectory
+
+& $BackendPython (Join-Path $PSScriptRoot "redis_lifecycle.py") prepare --port $RedisPort
+if ($LASTEXITCODE -ne 0) {
+    throw "Redis persistence initialization failed. See logs\redis.out.log."
+}
 
 Start-ProjectService `
     -Name "backend" `

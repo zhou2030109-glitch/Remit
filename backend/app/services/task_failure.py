@@ -3,13 +3,26 @@
 from pathlib import Path
 from uuid import uuid4
 
+from app.core.llm.errors import TransientLLMError, exception_chain, http_status_code
+
 
 def describe(error: Exception, root: Path, *, retrying: bool, attempts: int) -> dict:
     """按可验证的错误信号分类，不把科学门禁伪装成技术成功。"""
     from app.services.writing_workspace import read_json
 
     state = read_json(root / "workflow_state.json")
-    status = getattr(error, "status_code", None)
+    fallback = None
+    for cause in exception_chain(error):
+        report = _describe_error(cause, root, state, retrying, attempts)
+        if fallback is None:
+            fallback = report
+        if report["code"] != "UNCLASSIFIED":
+            return report
+    return fallback
+
+
+def _describe_error(error, root, state, retrying, attempts):
+    status = http_status_code(error)
     name = type(error).__name__
     code, layer, reason, retryable = (
         "UNCLASSIFIED",
@@ -36,7 +49,7 @@ def describe(error: Exception, root: Path, *, retrying: bool, attempts: int) -> 
             "模型服务正在限流，已保留当前成果。",
             True,
         )
-    elif status in {408, 500, 502, 503, 504} or any(
+    elif isinstance(error, TransientLLMError) or status in {408, 500, 502, 503, 504} or any(
         token in name
         for token in ("Timeout", "Connection", "Transport", "StreamInterrupted")
     ):

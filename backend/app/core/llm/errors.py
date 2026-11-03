@@ -1,6 +1,23 @@
 """LLM Provider 的可分类错误。"""
 
 
+def http_status_code(error: BaseException) -> int | None:
+    status = getattr(error, "status_code", None)
+    if status is None:
+        status = getattr(getattr(error, "response", None), "status_code", None)
+    return status if isinstance(status, int) else None
+
+
+def exception_chain(error: BaseException):
+    seen = set()
+    while error is not None and id(error) not in seen:
+        seen.add(id(error))
+        yield error
+        error = error.__cause__ or (
+            None if error.__suppress_context__ else error.__context__
+        )
+
+
 class NonRetryableLLMError(RuntimeError):
     """重复发送相同请求不会改善的上游错误。"""
 

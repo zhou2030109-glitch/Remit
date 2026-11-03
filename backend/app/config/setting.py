@@ -136,8 +136,8 @@ class Settings(BaseSettings):
     MAX_RETRIES: int | None = 3
     GATEWAY_MAX_RETRIES: int = 4
     LLM_HARD_RETRY_LIMIT: int = 4
-    LLM_STAGE_CALL_LIMIT: int = 24
-    LLM_STAGE_API_SECONDS: float = 900.0
+    LLM_STAGE_CALL_LIMIT: int = 60
+    LLM_STAGE_API_SECONDS: float = 2400.0
     LLM_REVIEW_RESERVED_CALLS: int = Field(default=4, ge=0)
     LLM_REVIEW_RESERVED_SECONDS: float = Field(default=240.0, ge=0)
     LLM_MIN_REQUEST_SECONDS: float = Field(default=60.0, gt=0)

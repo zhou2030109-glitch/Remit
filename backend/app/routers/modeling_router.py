@@ -25,7 +25,11 @@ from app.utils.common_utils import (
     ensure_safe_task_id,
 )
 from app.core.llm.llm_factory import LLMFactory
-from app.core.llm.errors import TransientLLMError, ModelStageBudgetExceeded
+from app.core.llm.errors import (
+    TransientLLMError,
+    ModelStageBudgetExceeded,
+    http_status_code,
+)
 from app.core.problem_vision import (
     VisionResult,
     build_vision_supplement,
@@ -94,7 +98,7 @@ def _is_transient_task_failure(error: BaseException) -> bool:
     while current is not None:
         if isinstance(current, TransientLLMError):
             return True
-        if getattr(current, "status_code", None) in _TRANSIENT_STATUS_CODES:
+        if http_status_code(current) in _TRANSIENT_STATUS_CODES:
             return True
         if type(current).__name__ in {
             "APIConnectionError",
@@ -555,6 +559,7 @@ async def run_modeling_task_async(
     _scheduled_tasks.discard(task_id)
 
     cancelled = False
+    retry_delay = None
     try:
         if (
             task_id in _pending_cancellations
@@ -712,6 +717,43 @@ async def run_modeling_task_async(
         )
         if will_retry:
             _auto_resume_counts[task_id] = attempt
+            retry_delay = delay_seconds
+    finally:
+        try:
+            if not task.done():
+                cancel_event.set()
+                task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            try:
+                await workflow.cleanup()
+            except Exception as cleanup_error:
+                retry_delay = None
+                logger.exception(
+                    f"清理任务 {task_id} 的代码解释器失败: "
+                    f"{_exception_message(cleanup_error)}"
+                )
+            else:
+                if cancelled or task_id in _pending_cancellations:
+                    retry_delay = None
+                    _auto_resume_counts.pop(task_id, None)
+                    workflow.mark_status("stopped")
+                    await redis_manager.publish_message(
+                        task_id,
+                        SystemMessage(
+                            content="建模任务已停止",
+                            type="warning",
+                            task_status="stopped",
+                        ),
+                    )
+        finally:
+            _active_tasks.pop(task_id, None)
+            _scheduled_tasks.discard(task_id)
+            _pending_cancellations.discard(task_id)
+            try:
+                await redis_manager.clear_cancellation_request(task_id)
+            except Exception as cleanup_error:
+                logger.warning(f"清理任务取消标记失败: {cleanup_error}")
+        if retry_delay is not None:
             resume_handle = asyncio.get_running_loop().create_task(
                 _auto_resume_after_failure(
                     task_id,
@@ -719,41 +761,12 @@ async def run_modeling_task_async(
                     comp_template,
                     format_output,
                     user_requirements,
-                    delay_seconds,
+                    retry_delay,
                     execution_backend,
                 )
             )
             _auto_resume_handles.add(resume_handle)
             resume_handle.add_done_callback(_auto_resume_handles.discard)
-    finally:
-        if not task.done():
-            cancel_event.set()
-            task.cancel()
-        await asyncio.gather(task, return_exceptions=True)
-        try:
-            await workflow.cleanup()
-        except Exception as cleanup_error:
-            logger.exception(
-                f"清理任务 {task_id} 的代码解释器失败: "
-                f"{_exception_message(cleanup_error)}"
-            )
-        else:
-            if cancelled:
-                workflow.mark_status("stopped")
-                await redis_manager.publish_message(
-                    task_id,
-                    SystemMessage(
-                        content="建模任务已停止", type="warning", task_status="stopped"
-                    ),
-                )
-        # 从注册表中清理
-        _active_tasks.pop(task_id, None)
-        _scheduled_tasks.discard(task_id)
-        _pending_cancellations.discard(task_id)
-        try:
-            await redis_manager.clear_cancellation_request(task_id)
-        except Exception as cleanup_error:
-            logger.warning(f"清理任务取消标记失败: {cleanup_error}")
 
 
 async def _auto_resume_after_failure(
@@ -1224,21 +1237,26 @@ async def cancel_task(task_id: str):
         task, cancel_event = active
         cancel_event.set()
         task.cancel()
+        try:
+            checkpoint, _ = _load_workflow_checkpoint(task_id)
+            checkpoint.mark_status("stopping")
+        except HTTPException:
+            pass
     try:
         await redis_manager.request_cancellation(task_id)
     except Exception as exc:
         logger.warning(f"保存取消标记失败，本机运行任务已直接中断: {exc}")
 
     if active is not None:
-        try:
-            checkpoint, _ = _load_workflow_checkpoint(task_id)
-            checkpoint.mark_status("stopping")
-        except HTTPException:
-            pass
-        logger.info(f"已请求取消任务 {task_id}，等待资源释放")
+        still_stopping = _active_tasks.get(task_id) is active
+        logger.info(f"已处理任务 {task_id} 的取消请求")
         return CancelTaskResponse(
             success=True,
-            message="正在停止，等待当前调用与执行器退出",
+            message=(
+                "正在停止，等待当前调用与执行器退出"
+                if still_stopping
+                else "停止请求已处理，原运行已退出"
+            ),
         )
 
     try:

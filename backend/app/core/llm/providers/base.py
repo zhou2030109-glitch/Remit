@@ -8,8 +8,16 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from app.core.llm.types import StandardResponse
+from app.utils.log_util import logger
 
 DeltaCallback = Callable[[str], Awaitable[None]]
+
+
+async def close_client(client) -> None:
+    try:
+        await client.close()
+    except Exception as error:
+        logger.warning("模型连接释放失败：{}", type(error).__name__)
 
 
 @dataclass(slots=True)

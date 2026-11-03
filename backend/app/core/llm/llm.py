@@ -14,7 +14,11 @@ import httpx
 
 from app.config.setting import ApiType, settings, effective_api_timeout_seconds
 from app.core.activity import AGENT_LABELS, publish_activity
-from app.core.llm.errors import NonRetryableLLMError, TransientLLMError
+from app.core.llm.errors import (
+    NonRetryableLLMError,
+    TransientLLMError,
+    http_status_code,
+)
 from app.core.llm.providers.anthropic import AnthropicProvider
 from app.core.llm.providers.base import BaseProvider
 from app.core.llm.providers.gemini import GeminiProvider
@@ -66,7 +70,7 @@ def _is_retryable_connection_error(error: Exception) -> bool:
 
 def _is_retryable_gateway_error(error: Exception) -> bool:
     """上游 / 网络故障是否够格进入加长重试窗口。"""
-    if getattr(error, "status_code", None) in RETRYABLE_GATEWAY_STATUS_CODES:
+    if http_status_code(error) in RETRYABLE_GATEWAY_STATUS_CODES:
         return True
     return _is_retryable_connection_error(error)
 
@@ -97,7 +101,7 @@ def _server_hinted_delay(error: Exception) -> float | None:
 
 def _retry_delay_seconds(error: Exception, attempt: int, base_delay: float) -> float:
     """限流 / 网关故障优先服从服务端节奏，其余线性退避。"""
-    if getattr(error, "status_code", None) in RETRYABLE_GATEWAY_STATUS_CODES:
+    if http_status_code(error) in RETRYABLE_GATEWAY_STATUS_CODES:
         hinted = _server_hinted_delay(error)
         if hinted is not None:
             return hinted
@@ -394,9 +398,7 @@ class LLM:
                     "completion_tokens": usage.completion_tokens if known else None,
                     "cost": None,
                     "currency": None,
-                    "error_code": str(
-                        getattr(error, "status_code", None) or type(error).__name__
-                    )
+                    "error_code": str(http_status_code(error) or type(error).__name__)
                     if error
                     else None,
                 }
@@ -507,7 +509,7 @@ class LLM:
         self, error: Exception, agent_name: str, attempt: int, retry_limit: int
     ) -> int:
         """记录失败并返回本次适用的重试上限；不可重试错误直接抛出。"""
-        status_code = getattr(error, "status_code", None)
+        status_code = http_status_code(error)
         if isinstance(error, NonRetryableLLMError) or status_code in {
             400,
             401,

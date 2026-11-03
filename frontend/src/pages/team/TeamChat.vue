@@ -6,7 +6,6 @@ import {
 } from "@/apis/submitModelingApi";
 import {
 	type CompetitionProfile,
-	type PaperContext,
 	type PaperProposal,
 	type ProjectEntry,
 	type TeamAction,
@@ -270,8 +269,11 @@ const events = shallowRef<TeamEvent[]>([]);
 const draft = ref("");
 const sending = ref(false);
 const error = ref("");
+let initialStateError = "";
 const { connection, open: openStream, close: closeStream } = useTeamStream(
 	(incoming, nextState) => {
+		if (initialStateError && error.value === initialStateError) error.value = "";
+		initialStateError = "";
 		if (incoming.length) events.value = mergeTeamEvents(events.value, incoming);
 		state.value = nextState;
 		const entry = history.value.find((item) => item.task_id === props.task_id);
@@ -285,7 +287,7 @@ const { connection, open: openStream, close: closeStream } = useTeamStream(
 	() => { void router.push("/home"); },
 );
 const CONNECTION_HINT =
-	"页面与本地服务之间的实时同步状态。中断期间后台计算与写作照常进行，恢复后自动补齐消息；长时间未恢复请检查本地服务是否仍在运行。";
+	"页面与本地服务之间的实时同步状态。恢复后自动补齐消息并读取任务状态；长时间未恢复请检查本地服务是否仍在运行。";
 const settingsOpen = ref(false);
 const sidebarOpen = ref(false);
 const narrowScreen = useMediaQuery("(max-width: 850px)");
@@ -346,15 +348,7 @@ const following = ref(true);
 const visibleCount = ref(120);
 const filter = ref("all");
 let disposed = false;
-let pendingRequest: {
-	id: string;
-	content: string;
-	action?: TeamAction;
-	checkpointId?: string;
-	planId?: string;
-	paperContext?: PaperContext;
-	timing?: Adjustment;
-} | null = null;
+let pendingRequest: Parameters<typeof sendTeamMessage>[1] | null = null;
 const statuses: Record<string, string> = {
 	chat: "对话中",
 	idle: "尚未开始",
@@ -646,34 +640,26 @@ async function send(
 			pendingRequest.content !== message ||
 			pendingRequest.action !== action ||
 			pendingRequest.timing !== timing ||
-			pendingRequest.checkpointId !==
-				state.value?.pending_approval?.checkpoint_id ||
-			pendingRequest.planId !== state.value?.preflight?.id
+			pendingRequest.role !== target.value ||
+			(action === "approve" && pendingRequest.checkpoint_id !==
+				state.value?.pending_approval?.checkpoint_id) ||
+			(action === "start" && pendingRequest.plan_id !== state.value?.preflight?.id)
 		)
 			pendingRequest = {
-				id: crypto.randomUUID(),
+				request_id: crypto.randomUUID(),
 				content: message,
 				action,
 				timing,
-				checkpointId: state.value?.pending_approval?.checkpoint_id,
-				planId: state.value?.preflight?.id,
-				paperContext:
+				role: target.value,
+				conversation_only: !action && !timing && state.value?.status === "running",
+				checkpoint_id: state.value?.pending_approval?.checkpoint_id,
+				plan_id: state.value?.preflight?.id,
+				paper_context:
 					action === "edit_paper"
 						? await paperEditor.value?.paperContext()
 						: undefined,
 			};
-		await sendTeamMessage(props.task_id, {
-			request_id: pendingRequest.id,
-			content: message,
-			action,
-			timing: pendingRequest.timing,
-			conversation_only:
-				!action && !timing && state.value?.status === "running",
-			role: target.value,
-			checkpoint_id: state.value?.pending_approval?.checkpoint_id,
-			plan_id: pendingRequest.planId,
-			paper_context: pendingRequest.paperContext,
-		});
+		await sendTeamMessage(props.task_id, pendingRequest);
 		pendingRequest = null;
 		if (content === draft.value) draft.value = "";
 		await scrollToLatest();
@@ -730,11 +716,13 @@ onMounted(async () => {
 	try {
 		await refreshState();
 		void refreshProposals().catch(() => {});
-		if (disposed) return;
-		openStream(props.task_id);
 	} catch (cause) {
-		error.value = explainModelingSubmissionFailure(cause);
-		connection.value = "未连接";
+		if (!disposed) {
+			initialStateError = explainModelingSubmissionFailure(cause);
+			error.value = initialStateError;
+		}
+	} finally {
+		if (!disposed) openStream(props.task_id);
 	}
 });
 onBeforeUnmount(() => {

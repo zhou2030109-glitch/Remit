@@ -28,8 +28,8 @@ def load_desktop_module():
 )
 class DesktopLauncherTests(unittest.TestCase):
     def test_exit_waits_for_inflight_launch_before_final_cleanup(self) -> None:
-        """在清理期或启动期退出，都不能让最终清理先于服务启动。"""
-        for phase in ("cleanup", "start"):
+        """启动期退出不能让最终清理先于服务启动。"""
+        for phase in ("start",):
             with self.subTest(phase=phase):
                 desktop = load_desktop_module()
                 app = desktop.DesktopApp()
@@ -72,11 +72,7 @@ class DesktopLauncherTests(unittest.TestCase):
                     self.assertFalse(boot.is_alive())
                     self.assertFalse(shutdown.is_alive())
                     show_error.assert_not_called()
-                expected = (
-                    ["cleanup", "final-stop"]
-                    if phase == "cleanup"
-                    else ["cleanup", "start", "final-stop"]
-                )
+                expected = ["start", "final-stop"]
                 self.assertEqual(events, expected)
                 app.window.load_url.assert_not_called()
 
@@ -132,12 +128,13 @@ class DesktopLauncherTests(unittest.TestCase):
 
         launcher_options = run.call_args.kwargs
         self.assertIs(launcher_options["stdin"], subprocess.DEVNULL)
-        self.assertIs(launcher_options["stdout"], subprocess.DEVNULL)
-        self.assertIs(launcher_options["stderr"], subprocess.DEVNULL)
+        self.assertNotEqual(launcher_options["stdout"], subprocess.PIPE)
+        self.assertTrue(launcher_options["stdout"].name.endswith("desktop-services.log"))
+        self.assertIs(launcher_options["stderr"], subprocess.STDOUT)
         self.assertNotIn("capture_output", launcher_options)
 
-    def test_desktop_cleans_stale_services_before_starting(self) -> None:
-        """桌面壳冷启动必须先清理上次崩溃留下的半死服务。"""
+    def test_desktop_preserves_existing_services_and_scopes_cleanup(self) -> None:
+        """打开桌面壳不能终止浏览器中正在执行的任务。"""
         desktop = load_desktop_module()
         app = desktop.DesktopApp()
         app.window = MagicMock()
@@ -156,9 +153,13 @@ class DesktopLauncherTests(unittest.TestCase):
         ):
             app._bootstrap_services()
 
-        self.assertEqual(run.call_count, 2)
-        self.assertIn(str(desktop.STOP_SCRIPT), run.call_args_list[0].args[0])
-        self.assertIn(str(desktop.START_SCRIPT), run.call_args_list[1].args[0])
+        self.assertEqual(run.call_count, 1)
+        self.assertIn(str(desktop.START_SCRIPT), run.call_args.args[0])
+        self.assertEqual(run.call_args.args[0][-2:], ["-OwnerToken", app.service_owner])
+        with patch.object(desktop.subprocess, "run") as stop:
+            app._shutdown_services()
+        self.assertIn(str(desktop.STOP_SCRIPT), stop.call_args.args[0])
+        self.assertEqual(stop.call_args.args[0][-2:], ["-OwnerToken", app.service_owner])
 
     def test_desktop_backend_does_not_use_uvicorn_hot_reload(self) -> None:
         """桌面发行模式不能让热重载进程拖住应用退出和下次启动。"""

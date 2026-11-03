@@ -5,7 +5,7 @@ from typing import Any
 from openai import AsyncOpenAI
 
 from app.config.setting import effective_api_timeout_seconds
-from app.core.llm.providers.base import BaseProvider, ProviderRequest
+from app.core.llm.providers.base import BaseProvider, ProviderRequest, close_client
 from app.core.llm.types import StandardResponse, ToolCall, Usage
 
 
@@ -13,12 +13,6 @@ class OpenAIChatProvider(BaseProvider):
     """覆盖 OpenAI 及兼容该端点的中转服务。"""
 
     async def send(self, request: ProviderRequest) -> StandardResponse:
-        client = AsyncOpenAI(
-            api_key=request.api_key,
-            base_url=request.base_url,
-            timeout=effective_api_timeout_seconds(),
-            max_retries=0,
-        )
         payload = self._build_payload(
             request.messages,
             request.model,
@@ -29,8 +23,17 @@ class OpenAIChatProvider(BaseProvider):
         )
         if request.tools and request.parallel_tool_calls is not None:
             payload["parallel_tool_calls"] = request.parallel_tool_calls
-        response = await client.chat.completions.create(**payload)
-        return self._normalize(response)
+        client = AsyncOpenAI(
+            api_key=request.api_key,
+            base_url=request.base_url,
+            timeout=effective_api_timeout_seconds(),
+            max_retries=0,
+        )
+        try:
+            response = await client.chat.completions.create(**payload)
+            return self._normalize(response)
+        finally:
+            await close_client(client)
 
     @staticmethod
     def _build_payload(

@@ -7,6 +7,8 @@
 .idea/
 settings.local.json
 dump.rdb
+tools/redis/appendonlydir/
+tools/redis/appendonly.aof
 .env
 .env.*
 !.env.example

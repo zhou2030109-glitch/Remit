@@ -54,11 +54,13 @@ async function confirm() {
             <template v-if="snapshot">
                 <p>{{ snapshot.label }} · {{ snapshot.phase === 'review' ? '待审查结果' : '待继续执行' }}</p>
                 <p>已用 {{ snapshot.used }} / {{ snapshot.limit }} 次调用，累计等待 {{ Math.ceil(snapshot.elapsed_seconds) }} / {{ snapshot.seconds_limit }} 秒。</p>
-                <p v-if="snapshot.phase === 'work' && !snapshot.can_resume && snapshot.used < snapshot.limit">剩余额度包含审查预留，当前执行步骤已无足够可用额度。</p>
+                <p v-if="snapshot.remaining === 0 && snapshot.phase === 'work' && snapshot.reserved_calls > 0 && snapshot.used < snapshot.limit">当前执行步骤已无可用调用次数；总额度还剩 {{ snapshot.limit - snapshot.used }} 次，须保留给结果审查。</p>
+                <p v-else-if="snapshot.remaining === 0">本阶段模型调用次数已用完。</p>
+                <p v-if="snapshot.remaining_seconds < snapshot.minimum_request_seconds">当前步骤可用模型等待时间还剩 {{ Math.floor(snapshot.remaining_seconds) }} 秒，发起一次新请求至少需要 {{ Math.ceil(snapshot.minimum_request_seconds) }} 秒。</p>
                 <p v-if="snapshot.phase === 'review'">先复核已保存产物，再继续审查。通过检查的计算会复用。</p>
                 <p v-if="!snapshot.can_resume">本次仅为当前阶段追加 6 次调用和 600 秒等待额度，原有记录保留。</p>
                 <p v-else>可以使用现有额度继续；是否完成取决于后续执行与审查结果。</p>
-                <p>继续会调用已配置的模型，可能产生费用；已有成果不会因此自动通过审核。</p>
+                <p>这是本阶段的本地运行额度。继续可能调用模型，是否收费取决于你配置的服务；已有成果仍需审核。</p>
                 <button type="button" :disabled="busy || sending" @click="confirm">{{ busy ? '正在提交…' : snapshot.can_resume ? '继续当前阶段' : '确认追加并继续' }}</button>
             </template>
             <p v-if="error" role="alert">{{ error }}</p>

@@ -114,6 +114,7 @@ let pollTimer: ReturnType<typeof setTimeout> | undefined;
 let pendingSave: Promise<boolean> | null = null;
 let disposed = false;
 let refreshSequence = 0;
+let compileEpoch = 0;
 let loadingFile = false;
 const dirty = computed(() => content.value !== savedContent.value);
 async function changeMode(mode: PaperMode) {
@@ -252,7 +253,9 @@ async function refresh() {
 		!["running", "stopping"].includes(response.generation.status)
 	)
 		stopRequested.value = false;
-	if (
+	if (!selected.value && !dirty.value && !saving.value) {
+		await loadFile(project.value.main);
+	} else if (
 		previousMain &&
 		project.value.main !== previousMain &&
 		selected.value === previousMain &&
@@ -338,11 +341,13 @@ async function save(): Promise<boolean> {
 
 async function compile() {
 	clearTimeout(compileTimer);
-	if (compiling.value || project.value?.compiling) return;
-	if (!(await save())) return;
+	if (disposed || compiling.value || project.value?.compiling || stopping.value || !selected.value) return;
 	compiling.value = true;
-	const submitted = project.value?.revision;
+	const epoch = compileEpoch;
+	let submitted: string | undefined;
 	try {
+		if (!(await save()) || disposed || epoch !== compileEpoch || project.value?.compiling || stopping.value) return;
+		submitted = project.value?.revision;
 		const result = (await compilePaper(props.task_id)).data;
 		await refresh();
 		if (result.status !== "completed") logsOpen.value = true;
@@ -352,8 +357,10 @@ async function compile() {
 		compiling.value = false;
 		if (
 			!disposed &&
+			epoch === compileEpoch &&
 			autoCompile.value &&
-			(dirty.value || (submitted && submitted !== project.value?.revision))
+			submitted &&
+			(dirty.value || submitted !== project.value?.revision)
 		) {
 			compileTimer = setTimeout(() => void compile(), 1500);
 		}
@@ -364,7 +371,7 @@ function edited() {
 	clearTimeout(compileTimer);
 	saveTimer = setTimeout(async () => {
 		if (await save()) {
-			if (autoCompile.value)
+			if (!disposed && autoCompile.value)
 				compileTimer = setTimeout(() => void compile(), 1200);
 		}
 	}, 700);
@@ -458,6 +465,7 @@ function keydown(event: KeyboardEvent) {
 }
 async function stopPaper() {
 	if (stopping.value) return;
+	compileEpoch++;
 	autoCompile.value = false;
 	clearTimeout(compileTimer);
 	stopRequested.value = true;
@@ -634,12 +642,12 @@ onUnmounted(() => {
 				<section v-show="sourceOpen" class="source-panel" :style="{ width: `${split}%` }" aria-label="LaTeX 源码编辑器">
 					<div class="panel-toolbar source-toolbar"><div><button v-if="!filesOpen" @click="filesOpen = true" aria-label="显示文件树"><FolderOpen :size="16" /></button><span class="source-tab"><Code2 :size="14" />源码</span><span class="filename" :title="selected">{{ selected }}</span></div><div><button v-if="selected !== project?.main && selected.endsWith('.tex')" @click="action('main')" :disabled="busy" title="编译时使用这个文件">设为主文件</button><button @click="searchOpen = !searchOpen" aria-label="搜索源码"><Search :size="15" /></button></div></div>
 					<FloatingPanel v-model:open="searchOpen" title="搜索源码" :width="350"><form class="search-bar" @submit.prevent="findNext"><input v-model="searchText" placeholder="查找…" aria-label="查找源码" /><button type="submit">下一个</button><button type="button" @click="searchOpen = false" aria-label="关闭搜索"><X :size="14" /></button></form></FloatingPanel>
-					<div class="code-area"><div class="line-gutter" aria-hidden="true"><pre ref="numbersLayer">{{ lineNumbers }}</pre></div><div class="code-content"><pre ref="highlightLayer" class="code-highlight" aria-hidden="true" v-html="highlighted" /><textarea ref="sourceInput" v-model="content" class="code-input" :class="{ plain: plainSource }" aria-label="LaTeX 源码" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off" :disabled="busy" @input="edited" @scroll="scrollEditor" @click="updateCursor" @keyup="updateCursor" /></div></div>
+					<div class="code-area"><div class="line-gutter" aria-hidden="true"><pre ref="numbersLayer">{{ lineNumbers }}</pre></div><div class="code-content"><pre ref="highlightLayer" class="code-highlight" aria-hidden="true" v-html="highlighted" /><textarea ref="sourceInput" v-model="content" class="code-input" :class="{ plain: plainSource }" aria-label="LaTeX 源码" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off" :disabled="busy || !selected" @input="edited" @scroll="scrollEditor" @click="updateCursor" @keyup="updateCursor" /></div></div>
 					<footer class="editor-status"><span><LoaderCircle v-if="saving" :size="12" class="spin" /><Check v-else-if="!dirty" :size="12" />{{ saving ? '正在保存' : dirty ? '有未保存修改' : '所有修改已保存' }}</span><span :title="savedAt">Ln {{ cursor.line }}, Col {{ cursor.column }} · UTF-8</span></footer>
 				</section>
 				<div v-show="sourceOpen" class="splitter" role="separator" aria-label="调整源码和 PDF 宽度" aria-orientation="vertical" :aria-valuenow="Math.round(split)" aria-valuemin="25" aria-valuemax="75" tabindex="0" @pointerdown="dragSplit" @pointermove="moveSplit" @keydown.left.prevent="split = Math.max(25, split - 2)" @keydown.right.prevent="split = Math.min(75, split + 2)"><span /></div>
 				<section class="pdf-panel" aria-label="PDF 预览">
-					<div class="panel-toolbar pdf-toolbar"><div class="compile-group"><button class="compile-button" :disabled="compiling || project?.compiling" @click="compile"><LoaderCircle v-if="compiling || project?.compiling" :size="14" class="spin" /><Play v-else :size="13" fill="currentColor" />{{ compiling || project?.compiling ? '正在编译…' : '重新编译' }}</button><button v-if="compiling || project?.compiling" :disabled="stopping" aria-label="停止论文编译" @click="stopPaper"><Square :size="13" />{{ stopping ? "正在停止…" : "停止编译" }}</button><label class="auto-compile"><input v-model="autoCompile" type="checkbox" />自动</label></div><div><button @click="logsOpen = !logsOpen" :class="{ 'has-errors': project?.compile.status === 'failed' }" title="日志与错误">日志<span v-if="project?.compile.diagnostics?.length" class="error-count">{{ project.compile.diagnostics.length }}</span></button><a v-if="pdfUrl" :href="writingUrl(task_id, '/pdf')" target="_blank" rel="noopener" title="打开或下载 PDF" aria-label="打开 PDF"><Download :size="16" /></a></div></div>
+					<div class="panel-toolbar pdf-toolbar"><div class="compile-group"><button class="compile-button" :disabled="compiling || project?.compiling || stopping || !selected" @click="compile"><LoaderCircle v-if="compiling || project?.compiling" :size="14" class="spin" /><Play v-else :size="13" fill="currentColor" />{{ compiling || project?.compiling ? '正在编译…' : '重新编译' }}</button><button v-if="compiling || project?.compiling" :disabled="stopping" aria-label="停止论文编译" @click="stopPaper"><Square :size="13" />{{ stopping ? "正在停止…" : "停止编译" }}</button><label class="auto-compile"><input v-model="autoCompile" type="checkbox" />自动</label></div><div><button @click="logsOpen = !logsOpen" :class="{ 'has-errors': project?.compile.status === 'failed' }" title="日志与错误">日志<span v-if="project?.compile.diagnostics?.length" class="error-count">{{ project.compile.diagnostics.length }}</span></button><a v-if="pdfUrl" :href="writingUrl(task_id, '/pdf')" target="_blank" rel="noopener" title="打开或下载 PDF" aria-label="打开 PDF"><Download :size="16" /></a></div></div>
 					<div v-if="stale" class="pdf-stale">源码已更新 · 当前显示上次成功编译的 PDF</div>
 					<OverlayDetails v-if="project?.compile.layout_review?.issues?.length" class="pdf-stale" title="排版待修订事项"><template #trigger>排版仍需修订（{{ project.compile.layout_review.issues.length }} 项）</template><ul><li v-for="issue in project.compile.layout_review.issues" :key="issue">{{ issue }}</li></ul></OverlayDetails><div v-if="pdfUrl && project?.compile.page_count" class="pdf-view-controls"><span>{{ project.compile.page_count }} 页</span><label>缩放 <ComposerSelect label="PDF 缩放" title="PDF 缩放" :model-value="String(zoom)" @update:model-value="zoom = Number($event)" :options="[{value:'75',label:'75%'},{value:'100',label:'适合宽度'},{value:'125',label:'125%'},{value:'150',label:'150%'}]" /></label></div><div class="pdf-surface"><div v-if="pdfUrl && project?.compile.page_count" class="pdf-pages" aria-label="论文 PDF 页面"><figure v-for="page in project.compile.page_count" :key="`${project.compile.pdf_revision}-${page}`" :style="{ width: `${zoom}%` }"><img :src="writingUrl(task_id, `/pdf/pages/${page - 1}?revision=${project.compile.pdf_revision}&scale=${pdfRenderScale}`)" :alt="`论文 PDF 第 ${page} 页`" loading="lazy" /><figcaption>{{ page }} / {{ project.compile.page_count }}</figcaption></figure></div><div v-else class="pdf-empty"><FileText :size="44" /><h2>{{ compiling ? '正在排版你的论文' : 'PDF 预览' }}</h2><p>{{ compiling ? 'XeLaTeX 编译完成后，PDF 会显示在这里。' : '点击重新编译，查看左侧源码的排版效果。' }}</p><button v-if="project?.compile.status === 'failed'" @click="logsOpen = true">查看编译错误</button></div></div>
 					<FloatingPanel v-model:open="logsOpen" title="编译日志" :width="620"><div class="compile-logs floating-compile-logs"><header><strong>{{ project?.compile.status === 'completed' ? '编译成功' : '编译日志' }}</strong><button @click="logsOpen = false" aria-label="关闭编译日志"><X :size="14" /></button></header><div class="diagnostics"><button v-for="(diagnostic, index) in project?.compile.diagnostics" :key="index" @click="jump(diagnostic.line)">第 {{ diagnostic.line }} 行：{{ diagnostic.message }}</button></div><pre>{{ project?.compile.log || '尚无编译日志。' }}</pre></div></FloatingPanel>

@@ -27,6 +27,9 @@ class EventStream:
     async def __aexit__(self, *args):
         return False
 
+    async def close(self):
+        pass
+
     def __aiter__(self):
         return self
 

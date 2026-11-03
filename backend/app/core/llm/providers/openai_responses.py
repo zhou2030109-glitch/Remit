@@ -16,7 +16,12 @@ from app.core.llm.errors import (
     ResponseStreamInterruptedError,
     TransientLLMError,
 )
-from app.core.llm.providers.base import BaseProvider, DeltaCallback, ProviderRequest
+from app.core.llm.providers.base import (
+    BaseProvider,
+    DeltaCallback,
+    ProviderRequest,
+    close_client,
+)
 from app.core.llm.types import StandardResponse, ToolCall, Usage
 from app.utils.log_util import logger
 
@@ -32,13 +37,6 @@ class OpenAIResponsesProvider(BaseProvider):
         self._use_non_streaming = False
 
     async def send(self, request: ProviderRequest) -> StandardResponse:
-        client = AsyncOpenAI(
-            api_key=request.api_key,
-            base_url=request.base_url,
-            timeout=effective_api_timeout_seconds(),
-            max_retries=0,
-            default_headers={"User-Agent": "Remit/1.0"},
-        )
         payload = self._build_payload(
             request.messages,
             request.model,
@@ -50,6 +48,13 @@ class OpenAIResponsesProvider(BaseProvider):
         )
         if request.tools and request.parallel_tool_calls is not None:
             payload["parallel_tool_calls"] = request.parallel_tool_calls
+        client = AsyncOpenAI(
+            api_key=request.api_key,
+            base_url=request.base_url,
+            timeout=effective_api_timeout_seconds(),
+            max_retries=0,
+            default_headers={"User-Agent": "Remit/1.0"},
+        )
         try:
             if self._use_non_streaming:
                 response = await client.responses.create(**payload)
@@ -91,7 +96,7 @@ class OpenAIResponsesProvider(BaseProvider):
                     self._raise_response_error(error.get("code"), error.get("message"))
             raise
         finally:
-            await client.close()
+            await close_client(client)
 
     def _build_payload(
         self,
@@ -130,7 +135,8 @@ class OpenAIResponsesProvider(BaseProvider):
         text_chars = 0
         # Read raw SDK events: its accumulator requires response.created and can
         # hide a gateway's untyped error behind an unrelated RuntimeError.
-        async with await client.responses.create(**payload, stream=True) as stream:
+        stream = await client.responses.create(**payload, stream=True)
+        try:
             async for event in stream:
                 kind = getattr(event, "type", None)
                 data = getattr(event, "data", None)
@@ -171,6 +177,8 @@ class OpenAIResponsesProvider(BaseProvider):
                             await on_delta(event.delta)
                         except Exception:
                             pass
+        finally:
+            await close_client(stream)
         raise ResponseStreamInterruptedError(
             f"模型响应流提前结束，未收到结束事件（最后事件：{last_event}，已接收 {text_chars} 字）。"
             "本次不使用未完成内容，可重试模型请求。"
