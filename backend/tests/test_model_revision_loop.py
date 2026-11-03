@@ -20,7 +20,7 @@ from app.core.deliverable_contract import (
     build_question_contract,
     build_stage_contract,
 )
-from app.core import workflow as workflow_module
+from app.core import workflow_solution
 from app.core.workflow import RemitWorkFlow
 from app.core.workflow_checkpoint import WorkflowCheckpoint
 from app.models.user_output import UserOutput
@@ -116,7 +116,7 @@ class ManualReviewContextTests(unittest.TestCase):
     """验证全局人工复核不会丢失分问入选/回退模型。"""
 
     def test_sensitivity_review_guidance_lists_every_selected_model(self) -> None:
-        builder = getattr(workflow_module, "_build_manual_execution_review", None)
+        builder = getattr(workflow_solution, "_build_manual_execution_review", None)
         self.assertIsNotNone(builder, "工作流缺少可测试的人工复核上下文构造入口")
         assert builder is not None
         review = builder(
@@ -483,13 +483,13 @@ class WorkflowModelRevisionTests(unittest.IsolatedAsyncioTestCase):
 
             with (
                 patch(
-                    "app.core.workflow.validate_question_deliverables",
+                    "app.core.workflow_solution.validate_question_deliverables",
                     return_value=DeliverableValidationReport(
                         passed=True,
                         paper_ready_images=("figure.png",),
                     ),
                 ),
-                patch("app.core.workflow.validate_writer_section"),
+                patch("app.core.workflow_solution.validate_writer_section"),
                 patch(
                     "app.core.workflow.redis_manager.publish_message",
                     new=AsyncMock(),
@@ -627,13 +627,13 @@ class WorkflowModelRevisionTests(unittest.IsolatedAsyncioTestCase):
 
             with (
                 patch(
-                    "app.core.workflow.validate_question_deliverables",
+                    "app.core.workflow_solution.validate_question_deliverables",
                     return_value=DeliverableValidationReport(
                         passed=True,
                         paper_ready_images=("figure.png",),
                     ),
                 ),
-                patch("app.core.workflow.validate_writer_section"),
+                patch("app.core.workflow_solution.validate_writer_section"),
                 patch(
                     "app.core.workflow.redis_manager.publish_message",
                     new=AsyncMock(),
@@ -754,7 +754,7 @@ class WorkflowModelRevisionTests(unittest.IsolatedAsyncioTestCase):
 
             with (
                 patch(
-                    "app.core.workflow.validate_question_deliverables",
+                    "app.core.workflow_solution.validate_question_deliverables",
                     side_effect=[
                         ModelQualityValidationError(
                             "分组 OOF R² 必须大于0，当前为 -0.3"
@@ -762,7 +762,7 @@ class WorkflowModelRevisionTests(unittest.IsolatedAsyncioTestCase):
                         DeliverableValidationReport(passed=True),
                     ],
                 ),
-                patch("app.core.workflow.validate_writer_section"),
+                patch("app.core.workflow_solution.validate_writer_section"),
                 patch(
                     "app.core.workflow.redis_manager.publish_message",
                     new=AsyncMock(),
@@ -903,13 +903,13 @@ class WorkflowModelRevisionTests(unittest.IsolatedAsyncioTestCase):
 
             with (
                 patch(
-                    "app.core.workflow.validate_question_deliverables",
+                    "app.core.workflow_solution.validate_question_deliverables",
                     side_effect=[
                         DeliverableValidationReport(passed=True),
                         DeliverableValidationReport(passed=True),
                     ],
                 ),
-                patch("app.core.workflow.validate_writer_section"),
+                patch("app.core.workflow_solution.validate_writer_section"),
                 patch(
                     "app.core.workflow.redis_manager.publish_message",
                     new=publish,

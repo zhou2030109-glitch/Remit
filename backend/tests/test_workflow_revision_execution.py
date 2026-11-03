@@ -11,6 +11,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.config.setting import settings
 from app.core import workflow as workflow_module
+from app.core import workflow_solution
+from app.core.llm.errors import NonRetryableLLMError
 from app.core.deliverable_contract import build_stage_contract
 from app.core.pilot import PilotValidationError
 from app.core.workflow import RemitWorkFlow, WorkflowApprovalRequired
@@ -143,7 +145,7 @@ class WorkflowRevisionExecutionTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("pending_model_review", checkpoint.load())
 
     async def test_pilot_config_error_is_not_skipped_as_completed(self):
-        error = workflow_module.NonRetryableLLMError("missing workspaceid")
+        error = NonRetryableLLMError("missing workspaceid")
         workflow = RemitWorkFlow()
         workflow.checkpoint = MagicMock()
         workflow.checkpoint.consume_revision_feedback.return_value = ""
@@ -161,7 +163,7 @@ class WorkflowRevisionExecutionTests(unittest.IsolatedAsyncioTestCase):
                 workflow_module.redis_manager, "publish_message", new=AsyncMock()
             ),
         ):
-            with self.assertRaises(workflow_module.NonRetryableLLMError):
+            with self.assertRaises(NonRetryableLLMError):
                 await workflow._pilot_node(
                     state,
                     modeler,
@@ -251,7 +253,7 @@ class WorkflowRevisionExecutionTests(unittest.IsolatedAsyncioTestCase):
                 patch.object(
                     workflow_module.redis_manager, "publish_message", new=AsyncMock()
                 ),
-                patch.object(workflow_module, "validate_writer_section"),
+                patch.object(workflow_solution, "validate_writer_section"),
             ):
                 for revision in range(2):
                     if revision == 1:
@@ -439,7 +441,7 @@ class WorkflowRevisionExecutionTests(unittest.IsolatedAsyncioTestCase):
                 patch.object(
                     workflow_module.redis_manager, "publish_message", new=AsyncMock()
                 ),
-                patch.object(workflow_module, "validate_writer_section"),
+                patch.object(workflow_solution, "validate_writer_section"),
             ):
                 await workflow._solution_node(
                     key="eda",

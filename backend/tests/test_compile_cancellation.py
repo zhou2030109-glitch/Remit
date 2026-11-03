@@ -268,6 +268,7 @@ def test_previous_final_approval_cannot_validate_failed_recompile(
 ):
     from unittest.mock import AsyncMock, MagicMock
     from app.core import workflow as module
+    from app.core import workflow_writing
     from app.core.workflow_checkpoint import WorkflowCheckpoint
     from app.schemas.request import Problem
 
@@ -282,13 +283,13 @@ def test_previous_final_approval_cannot_validate_failed_recompile(
     monkeypatch.setattr(flow, "_start_node", AsyncMock())
     monkeypatch.setattr(flow, "_complete_node", AsyncMock())
     monkeypatch.setattr(flow, "_review_and_polish_paper", AsyncMock(return_value={}))
-    monkeypatch.setattr(module, "polish_markdown", lambda *args: "fixture")
+    monkeypatch.setattr(workflow_writing, "polish_markdown", lambda *args: "fixture")
     monkeypatch.setattr(module.redis_manager, "publish_message", AsyncMock())
 
     def invalid(*args, **kwargs):
-        raise module.PaperRenderError("new compilation failed")
+        raise workflow_writing.PaperRenderError("new compilation failed")
 
-    monkeypatch.setattr(module, "validate_final_paper", invalid)
+    monkeypatch.setattr(workflow_writing, "validate_final_paper", invalid)
 
     async def exercise():
         with pytest.raises(
