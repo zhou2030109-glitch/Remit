@@ -1813,9 +1813,14 @@ def collect_model_quality_evidence(
                 else:
                     remaining_chars -= size
             evidence["artifact_preview_coverage"] = {
-                "omitted": [name for name in artifact_names if isinstance(name, str)
-                            and name not in previews and name not in
-                            {contract.quality_filename, contract.metrics_filename}],
+                "omitted": [
+                    name
+                    for name in artifact_names
+                    if isinstance(name, str)
+                    and name not in previews
+                    and name
+                    not in {contract.quality_filename, contract.metrics_filename}
+                ],
                 "note": "预览来自磁盘文件，有文件数、行列数与长度限制；未预览或截断不等于产物缺失，也不能作为已核验的证明。",
             }
             if previews:

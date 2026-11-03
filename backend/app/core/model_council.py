@@ -21,7 +21,6 @@ from app.schemas.A2A import (
     ModelerToCoder,
 )
 from app.schemas.enums import AgentType
-from app.schemas.response import SystemMessage
 from app.services.redis_manager import redis_manager
 from app.utils.log_util import logger
 
@@ -198,14 +197,10 @@ class ModelCouncil:
             label="候选模型探索",
         )
         self._require_keys(proposal.questions, question_keys, "探索方案")
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             self.task_id,
-            SystemMessage(
-                content=(
-                    f"独立模型探索完成：{self.scout_llm.model} 已为 "
-                    f"{len(question_keys)} 个小问建立候选集"
-                )
-            ),
+            f"独立模型探索完成：{self.scout_llm.model} 已为 "
+            f"{len(question_keys)} 个小问建立候选集",
         )
         return proposal
 
@@ -263,15 +258,11 @@ class ModelCouncil:
             self.critic_status = "fallback"
             self.fallback_reasons = {key: reason for key in question_keys}
             reviewer = f"{self.scout_llm.model or 'scout'}（备用审稿）"
-            await redis_manager.publish_message(
+            await redis_manager.notify(
                 self.task_id,
-                SystemMessage(
-                    content=(
-                        f"Fable 整题战略审查出现{reason}；本任务已熔断 Fable，"
-                        "后续不会再次调用，现由备用审稿模型一次性完成。"
-                    ),
-                    type="warning",
-                ),
+                f"Fable 整题战略审查出现{reason}；本任务已熔断 Fable，"
+                "后续不会再次调用，现由备用审稿模型一次性完成。",
+                "warning",
             )
             fallback_payload = self._build_portfolio_review_payload(
                 question_keys=question_keys,
@@ -309,15 +300,11 @@ class ModelCouncil:
                     primary=primary,
                     scout=scout,
                 )
-                await redis_manager.publish_message(
+                await redis_manager.notify(
                     self.task_id,
-                    SystemMessage(
-                        content=(
-                            f"备用模型审稿出现{fallback_reason}；"
-                            "已使用本地确定性规则保留基线、候选和必做实验，任务继续。"
-                        ),
-                        type="warning",
-                    ),
+                    f"备用模型审稿出现{fallback_reason}；"
+                    "已使用本地确定性规则保留基线、候选和必做实验，任务继续。",
+                    "warning",
                 )
 
         self._require_keys(packet.question_reviews, question_keys, "整题盲审结论")
@@ -333,9 +320,8 @@ class ModelCouncil:
             if self.critic_status == "completed"
             else f"Fable 已熔断，整题战略裁决由 {self.scout_llm.model} 备用完成；"
         )
-        await redis_manager.publish_message(
-            self.task_id,
-            SystemMessage(content=status_message + "等待主建模手综合并接受人工审核"),
+        await redis_manager.notify(
+            self.task_id, status_message + "等待主建模手综合并接受人工审核"
         )
         return packet, label_map
 

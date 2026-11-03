@@ -576,31 +576,24 @@ async def run_modeling_task_async(
             )
 
         # 发送任务开始状态
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             task_id,
-            SystemMessage(
-                content=(
-                    f"任务从节点 {resume_from} 继续处理"
-                    if resume_from
-                    else (
-                        "任务继续处理（人工审核已完成）"
-                        if continue_existing
-                        else "任务开始处理"
-                    )
-                ),
-                task_status="running",
+            f"任务从节点 {resume_from} 继续处理"
+            if resume_from
+            else (
+                "任务继续处理（人工审核已完成）"
+                if continue_existing
+                else "任务开始处理"
             ),
+            task_status="running",
         )
         await asyncio.wait_for(task, timeout=settings.TASK_TIMEOUT_SECONDS)
         workflow.mark_status("completed")
         _auto_resume_counts.pop(task_id, None)
 
         # 发送任务完成状态
-        await redis_manager.publish_message(
-            task_id,
-            SystemMessage(
-                content="任务处理完成", type="success", task_status="completed"
-            ),
+        await redis_manager.notify(
+            task_id, "任务处理完成", "success", task_status="completed"
         )
     except WorkflowApprovalRequired as pause:
         workflow.mark_status("awaiting_approval")
@@ -644,16 +637,12 @@ async def run_modeling_task_async(
             hint = "该节点结果需要人工裁决（HIL 已关闭，已自动挂起）。"
         else:
             hint = "该节点质量门未通过（HIL 已关闭，已自动挂起）。"
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             task_id,
-            SystemMessage(
-                content=(
-                    f"任务挂起等待人工裁决：{approval.get('node_label', approval.get('node_id', ''))}。"
-                    f"{hint}请在项目页批准、放行或退回以继续。"
-                ),
-                type="warning",
-                task_status="awaiting_approval",
-            ),
+            f"任务挂起等待人工裁决：{approval.get('node_label', approval.get('node_id', ''))}。"
+            f"{hint}请在项目页批准、放行或退回以继续。",
+            "warning",
+            task_status="awaiting_approval",
         )
     except asyncio.CancelledError:
         logger.info(f"任务 {task_id} 被取消")
@@ -693,27 +682,23 @@ async def run_modeling_task_async(
         except (OSError, ValueError):
             logger.warning("错误摘要暂时无法保存；原有检查点保持不变")
         delay_seconds = settings.TASK_AUTO_RESUME_BASE_DELAY_SECONDS * attempt
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             task_id,
-            SystemMessage(
-                content=(
-                    f"{'任务额度暂停' if budget_pause else '任务执行失败'}: {error_message}"
-                    + (
-                        f"；将在 {delay_seconds} 秒后从检查点自动续跑"
-                        f"（第 {attempt}/{_AUTO_RESUME_LIMIT} 次）"
-                        if will_retry
-                        else (
-                            "；请查看额度与已保存成果后继续"
-                            if budget_pause
-                            else "；已停止自动重试，请查看错误原因后续跑"
-                            if not transient
-                            else "；自动续跑次数已用完，请人工在页面上续跑或退回"
-                        )
-                    )
-                ),
-                type="warning" if budget_pause else "error",
-                task_status=task_status,
+            f"{'任务额度暂停' if budget_pause else '任务执行失败'}: {error_message}"
+            + (
+                f"；将在 {delay_seconds} 秒后从检查点自动续跑"
+                f"（第 {attempt}/{_AUTO_RESUME_LIMIT} 次）"
+                if will_retry
+                else (
+                    "；请查看额度与已保存成果后继续"
+                    if budget_pause
+                    else "；已停止自动重试，请查看错误原因后续跑"
+                    if not transient
+                    else "；自动续跑次数已用完，请人工在页面上续跑或退回"
+                )
             ),
+            "warning" if budget_pause else "error",
+            task_status=task_status,
         )
         if will_retry:
             _auto_resume_counts[task_id] = attempt
@@ -741,13 +726,8 @@ async def run_modeling_task_async(
                     retry_delay = None
                     _auto_resume_counts.pop(task_id, None)
                     workflow.mark_status("stopped")
-                    await redis_manager.publish_message(
-                        task_id,
-                        SystemMessage(
-                            content="建模任务已停止",
-                            type="warning",
-                            task_status="stopped",
-                        ),
+                    await redis_manager.notify(
+                        task_id, "建模任务已停止", "warning", task_status="stopped"
                     )
         finally:
             _active_tasks.pop(task_id, None)
@@ -817,11 +797,8 @@ async def _auto_resume_after_failure(
         ):
             _scheduled_tasks.discard(task_id)
             return
-        await redis_manager.publish_message(
-            task_id,
-            SystemMessage(
-                content="自动续跑开始：从检查点恢复未完成节点", task_status="running"
-            ),
+        await redis_manager.notify(
+            task_id, "自动续跑开始：从检查点恢复未完成节点", task_status="running"
         )
         await run_modeling_task_async(
             task_id,
@@ -1011,12 +988,10 @@ async def submit_approval(
         ) from exc
 
     await redis_manager.clear_cancellation_request(task_id)
-    await redis_manager.publish_message(
+    await redis_manager.notify(
         task_id,
-        SystemMessage(
-            content=decision_message,
-            type="success" if request.decision == "approve" else "warning",
-        ),
+        decision_message,
+        "success" if request.decision == "approve" else "warning",
     )
     _auto_resume_counts.pop(task_id, None)
     _scheduled_tasks.add(task_id)
@@ -1277,11 +1252,8 @@ async def cancel_task(task_id: str):
         checkpoint, state = _load_workflow_checkpoint(task_id)
         if state.get("status") == "awaiting_approval":
             checkpoint.mark_status("stopped")
-            await redis_manager.publish_message(
-                task_id,
-                SystemMessage(
-                    content="任务已停止", type="warning", task_status="stopped"
-                ),
+            await redis_manager.notify(
+                task_id, "任务已停止", "warning", task_status="stopped"
             )
             return CancelTaskResponse(
                 success=True,
@@ -1292,13 +1264,8 @@ async def cancel_task(task_id: str):
 
     messages = await redis_manager.load_task_messages(task_id)
     if messages and redis_manager.task_status_from_messages(messages) == "running":
-        await redis_manager.publish_message(
-            task_id,
-            SystemMessage(
-                content="任务已停止（运行进程已不存在）",
-                type="warning",
-                task_status="stopped",
-            ),
+        await redis_manager.notify(
+            task_id, "任务已停止（运行进程已不存在）", "warning", task_status="stopped"
         )
         try:
             checkpoint, _ = _load_workflow_checkpoint(task_id)

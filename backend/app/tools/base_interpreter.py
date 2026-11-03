@@ -12,7 +12,7 @@ import time
 from collections.abc import AsyncIterator
 
 from app.config.setting import settings
-from app.schemas.response import InterpreterMessage, OutputItem, SystemMessage
+from app.schemas.response import InterpreterMessage, OutputItem
 from app.services.redis_manager import redis_manager
 from app.tools.notebook_serializer import NotebookSerializer
 from app.utils.log_util import logger
@@ -104,12 +104,8 @@ class BaseCodeInterpreter(abc.ABC):
             await asyncio.sleep(interval)
             elapsed = int(time.monotonic() - started)
             try:
-                await redis_manager.publish_message(
-                    self.task_id,
-                    SystemMessage(
-                        content=f"{label}仍在运行（已耗时 {elapsed} 秒）",
-                        type="info",
-                    ),
+                await redis_manager.notify(
+                    self.task_id, f"{label}仍在运行（已耗时 {elapsed} 秒）", "info"
                 )
             except Exception as exc:
                 logger.warning(f"代码执行心跳发送失败: {exc}")

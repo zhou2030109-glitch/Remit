@@ -544,14 +544,10 @@ class LLM:
             return False
         if self.task_id:
             try:
-                await redis_manager.publish_message(
+                await redis_manager.notify(
                     self.task_id,
-                    SystemMessage(
-                        content=(
-                            f"主模型连接持续失败，已切换备用模型 {self.model} 继续"
-                        ),
-                        type="warning",
-                    ),
+                    f"主模型连接持续失败，已切换备用模型 {self.model} 继续",
+                    "warning",
                 )
             except Exception:
                 pass

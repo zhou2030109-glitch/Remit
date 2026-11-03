@@ -226,7 +226,10 @@ def resume_phase(root: Path, state: dict) -> str:
 
     node = str(state.get("current_node", ""))
     saved_phase = state.get("model_stage_phase") or {}
-    if saved_phase.get("node") == node and saved_phase.get("phase") in {"work", "review"}:
+    if saved_phase.get("node") == node and saved_phase.get("phase") in {
+        "work",
+        "review",
+    }:
         return saved_phase["phase"]
     if state.get("pending_model_review") == node:
         return "review"

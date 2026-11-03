@@ -12,7 +12,7 @@ from typing import Any
 import jupyter_client
 import psutil
 
-from app.schemas.response import OutputItem, ResultModel, StdErrModel, SystemMessage
+from app.schemas.response import OutputItem, ResultModel, StdErrModel
 from app.config.setting import settings
 from app.services.redis_manager import redis_manager
 from app.tools.base_interpreter import BaseCodeInterpreter
@@ -219,9 +219,7 @@ class LocalCodeInterpreter(BaseCodeInterpreter):
 
         self.notebook_serializer.add_code_cell_to_notebook(code)
 
-        await redis_manager.publish_message(
-            self.task_id, SystemMessage(content="开始执行代码")
-        )
+        await redis_manager.notify(self.task_id, "开始执行代码")
         self._execution_abort.clear()
         worker = asyncio.create_task(asyncio.to_thread(self._run_raw, code))
         try:
@@ -234,10 +232,7 @@ class LocalCodeInterpreter(BaseCodeInterpreter):
             await self._recover_kernel_after_timeout(worker)
             error = f"Python 代码执行超过 {self.timeout:g} 秒，内核已中断并重启"
             self.notebook_serializer.add_code_cell_error_to_notebook(error)
-            await redis_manager.publish_message(
-                self.task_id,
-                SystemMessage(content=error, type="error"),
-            )
+            await redis_manager.notify(self.task_id, error, "error")
             await self._push_to_websocket([StdErrModel(msg=error)])
             return error, True, error
         except asyncio.CancelledError:
@@ -251,9 +246,7 @@ class LocalCodeInterpreter(BaseCodeInterpreter):
                     pass
             raise
 
-        await redis_manager.publish_message(
-            self.task_id, SystemMessage(content="代码执行完成")
-        )
+        await redis_manager.notify(self.task_id, "代码执行完成")
 
         text_parts: list[str] = []
         display: list[OutputItem] = []
@@ -289,10 +282,7 @@ class LocalCodeInterpreter(BaseCodeInterpreter):
 
     async def _reject_execution(self, reason: str) -> tuple[str, bool, str]:
         self.notebook_serializer.add_code_cell_error_to_notebook(reason)
-        await redis_manager.publish_message(
-            self.task_id,
-            SystemMessage(content=reason, type="warning"),
-        )
+        await redis_manager.notify(self.task_id, reason, "warning")
         await self._push_to_websocket([StdErrModel(msg=reason)])
         return reason, True, reason
 

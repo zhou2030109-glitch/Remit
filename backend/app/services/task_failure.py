@@ -49,9 +49,13 @@ def _describe_error(error, root, state, retrying, attempts):
             "模型服务正在限流，已保留当前成果。",
             True,
         )
-    elif isinstance(error, TransientLLMError) or status in {408, 500, 502, 503, 504} or any(
-        token in name
-        for token in ("Timeout", "Connection", "Transport", "StreamInterrupted")
+    elif (
+        isinstance(error, TransientLLMError)
+        or status in {408, 500, 502, 503, 504}
+        or any(
+            token in name
+            for token in ("Timeout", "Connection", "Transport", "StreamInterrupted")
+        )
     ):
         code, layer, reason, retryable = (
             "TRANSPORT",

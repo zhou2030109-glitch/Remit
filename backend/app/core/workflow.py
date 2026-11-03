@@ -318,15 +318,11 @@ class RemitWorkFlow(WorkFlow):
                     critic_llm,
                 )
             ):
-                await redis_manager.publish_message(
+                await redis_manager.notify(
                     self.task_id,
-                    SystemMessage(
-                        content=(
-                            "模型评审组与主建模手使用完全相同的模型接入点，"
-                            "无法提供独立性或故障隔离，本次已自动跳过额外评审调用。"
-                        ),
-                        type="warning",
-                    ),
+                    "模型评审组与主建模手使用完全相同的模型接入点，"
+                    "无法提供独立性或故障隔离，本次已自动跳过额外评审调用。",
+                    "warning",
                 )
             else:
                 model_council = ModelCouncil(
@@ -495,12 +491,10 @@ class RemitWorkFlow(WorkFlow):
             await asyncio.to_thread(sync_results, Path(self.work_dir), state)
             await self._complete_node(state, "sync_writing")
             self.checkpoint.mark_status("completed")
-            await redis_manager.publish_message(
+            await redis_manager.notify(
                 self.task_id,
-                SystemMessage(
-                    content="建模与计算已完成，写作素材已交接。论文正文尚未生成，可在论文区启动墨墨撰写初稿。",
-                    type="success",
-                ),
+                "建模与计算已完成，写作素材已交接。论文正文尚未生成，可在论文区启动墨墨撰写初稿。",
+                "success",
             )
             return
 
@@ -753,9 +747,8 @@ class RemitWorkFlow(WorkFlow):
         state["coordinator_response"] = response.model_dump(mode="json")
         state.pop("previous_coordinator_response", None)
         await self._complete_node(state, "coordinator")
-        await redis_manager.publish_message(
-            self.task_id,
-            SystemMessage(content="原题提取与初步结构化理解完成，开始扫描附件和文献"),
+        await redis_manager.notify(
+            self.task_id, "原题提取与初步结构化理解完成，开始扫描附件和文献"
         )
         return response
 
@@ -774,10 +767,7 @@ class RemitWorkFlow(WorkFlow):
         if self.checkpoint is None:
             raise RuntimeError("workflow checkpoint is not initialized")
         await self._start_node(state, "modeler")
-        await redis_manager.publish_message(
-            self.task_id,
-            SystemMessage(content="建模手开始建模ing..."),
-        )
+        await redis_manager.notify(self.task_id, "建模手开始建模ing...")
         await self._check_cancelled()
         revision_feedback = self.checkpoint.consume_revision_feedback(state, "modeler")
         cumulative_feedback = self.checkpoint.cumulative_revision_feedback(
@@ -853,20 +843,16 @@ class RemitWorkFlow(WorkFlow):
         if model_council is None:
             response = await modeler_agent.run(coordinator_response)
         else:
-            await redis_manager.publish_message(
-                self.task_id,
-                SystemMessage(content="模型评审组已启动：主建模与独立候选探索并行进行"),
+            await redis_manager.notify(
+                self.task_id, "模型评审组已启动：主建模与独立候选探索并行进行"
             )
             cached_primary = state.get("modeler_primary_response")
             cached_scout = state.get("model_scout_proposal")
             if cached_primary and cached_scout:
                 primary_response = ModelerToCoder.model_validate(cached_primary)
                 scout_proposal = ModelScoutProposal.model_validate(cached_scout)
-                await redis_manager.publish_message(
-                    self.task_id,
-                    SystemMessage(
-                        content="已恢复主建模与独立候选探索的中间成果，继续模型盲审"
-                    ),
+                await redis_manager.notify(
+                    self.task_id, "已恢复主建模与独立候选探索的中间成果，继续模型盲审"
                 )
             else:
                 state.pop("model_council", None)
@@ -916,9 +902,8 @@ class RemitWorkFlow(WorkFlow):
             cached_council = state.get("model_council")
             if cached_council:
                 council_result = ModelCouncilResult.model_validate(cached_council)
-                await redis_manager.publish_message(
-                    self.task_id,
-                    SystemMessage(content="已恢复模型评审组结论，继续主建模综合"),
+                await redis_manager.notify(
+                    self.task_id, "已恢复模型评审组结论，继续主建模综合"
                 )
             else:
                 # 在请求发出前持久化预留额度。即使进程在上游响应后崩溃，
@@ -1102,16 +1087,10 @@ class RemitWorkFlow(WorkFlow):
         self.questions = refined.questions
         self.ques_count = refined.ques_count
         await self._complete_node(state, "analysis")
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             self.task_id,
-            SystemMessage(
-                content=analysis_outcome["summary"],
-                type=(
-                    "success"
-                    if analysis_outcome["status"] == "completed"
-                    else "warning"
-                ),
-            ),
+            analysis_outcome["summary"],
+            "success" if analysis_outcome["status"] == "completed" else "warning",
         )
         await self._submit_analysis_approval(state, refined)
         return refined
@@ -1192,13 +1171,11 @@ class RemitWorkFlow(WorkFlow):
             "literature_enabled", True
         )
         revision_feedback = self.checkpoint.consume_revision_feedback(state, "research")
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             self.task_id,
-            SystemMessage(
-                content="开始数据侦察与文献调研：先摸清数据底细和领域方法，再定方案"
-                if literature_enabled
-                else "开始附件数据核验；本项目未启用建模前文献检索。"
-            ),
+            "开始数据侦察与文献调研：先摸清数据底细和领域方法，再定方案"
+            if literature_enabled
+            else "开始附件数据核验；本项目未启用建模前文献检索。",
         )
         await publish_activity(
             self.task_id, "正在扫描数据文件，生成数据画像…", category="info"
@@ -1241,26 +1218,18 @@ class RemitWorkFlow(WorkFlow):
         card_count = sum(len(items) for items in method_cards.values())
         fulltext_stats = literature_review.get("fulltext_stats") or {}
         full_read = int(fulltext_stats.get("succeeded", 0) or 0)
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             self.task_id,
-            SystemMessage(
-                content=(
-                    f"调研结果：画像 {profiled_files} 个数据文件，"
-                    + (
-                        "未启用建模前文献检索，没有新增文献证据。"
-                        if not literature_enabled
-                        else f"检索 {paper_count} 篇文献，精读 {full_read} 篇全文，"
-                        f"产出 {card_count} 张方法卡，已注入建模选型"
-                        if card_count
-                        else "文献调研未完成，原因已记录；不得显示为绿色完成"
-                    )
-                ),
-                type=(
-                    "success"
-                    if research_outcome["status"] == "completed"
-                    else "warning"
-                ),
+            f"调研结果：画像 {profiled_files} 个数据文件，"
+            + (
+                "未启用建模前文献检索，没有新增文献证据。"
+                if not literature_enabled
+                else f"检索 {paper_count} 篇文献，精读 {full_read} 篇全文，"
+                f"产出 {card_count} 张方法卡，已注入建模选型"
+                if card_count
+                else "文献调研未完成，原因已记录；不得显示为绿色完成"
             ),
+            "success" if research_outcome["status"] == "completed" else "warning",
         )
         return coordinator_response.model_copy(
             update={
@@ -1416,9 +1385,8 @@ class RemitWorkFlow(WorkFlow):
         state.setdefault("node_outcomes", {}).pop("pilot", None)
         await self._start_node(state, node_id)
         await self._check_cancelled()
-        await redis_manager.publish_message(
-            self.task_id,
-            SystemMessage(content="开始核对探索实验范围；适用时再执行小样本候选比较"),
+        await redis_manager.notify(
+            self.task_id, "开始核对探索实验范围；适用时再执行小样本候选比较"
         )
         revision_feedback = self.checkpoint.consume_revision_feedback(state, node_id)
         literature_brief = str(state.get("literature_brief", ""))
@@ -1492,9 +1460,8 @@ class RemitWorkFlow(WorkFlow):
                     "summary": "未运行候选比较；按已批准方案继续正式计算与验证",
                 }
                 await self._complete_node(state, node_id)
-                await redis_manager.publish_message(
-                    self.task_id,
-                    SystemMessage(content=state["pilot_skipped"], type="warning"),
+                await redis_manager.notify(
+                    self.task_id, state["pilot_skipped"], "warning"
                 )
                 return
             expected_keys = {
@@ -1542,12 +1509,10 @@ class RemitWorkFlow(WorkFlow):
                 raise
             # 探索实验是增强环节：失败降级按原方案继续，绝不阻塞主流程
             logger.error(f"探索实验降级跳过: {exc}")
-            await redis_manager.publish_message(
+            await redis_manager.notify(
                 self.task_id,
-                SystemMessage(
-                    content=(f"探索实验未能完成，已降级跳过，按原方案继续求解：{exc}"),
-                    type="warning",
-                ),
+                f"探索实验未能完成，已降级跳过，按原方案继续求解：{exc}",
+                "warning",
             )
             state["pilot_skipped"] = str(exc)
             from app.core.project_audit import evaluate_pilot
@@ -1599,14 +1564,10 @@ class RemitWorkFlow(WorkFlow):
             if judged_count
             else ""
         )
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             self.task_id,
-            SystemMessage(
-                content=(
-                    f"探索实验完成，已按真实数据定案：{selected_lines}。{citation_note}"
-                ),
-                type="success",
-            ),
+            f"探索实验完成，已按真实数据定案：{selected_lines}。{citation_note}",
+            "success",
         )
         artifacts = [PILOT_RESULTS_FILENAME]
         if judged_count:
@@ -1650,10 +1611,7 @@ class RemitWorkFlow(WorkFlow):
 
     async def _initialize_interpreter(self, state: dict[str, Any]) -> None:
         """为待执行的求解节点创建新的本地代码环境。"""
-        await redis_manager.publish_message(
-            self.task_id,
-            SystemMessage(content="正在创建代码沙盒环境"),
-        )
+        await redis_manager.notify(self.task_id, "正在创建代码沙盒环境")
         notebook_serializer = NotebookSerializer(work_dir=self.work_dir)
         problem_data = state.get("problem")
         preferred_backend = (
@@ -1676,11 +1634,8 @@ class RemitWorkFlow(WorkFlow):
             "name": self.code_interpreter.backend_name,
         }
         self.checkpoint.save(state)
-        await redis_manager.publish_message(
-            self.task_id,
-            SystemMessage(
-                content=f"计算环境创建完成：{self.code_interpreter.backend_name}"
-            ),
+        await redis_manager.notify(
+            self.task_id, f"计算环境创建完成：{self.code_interpreter.backend_name}"
         )
 
     async def _solution_node(
@@ -1704,10 +1659,7 @@ class RemitWorkFlow(WorkFlow):
         node_id = f"solve:{key}"
         await self._start_node(state, node_id)
         await self._check_cancelled()
-        await redis_manager.publish_message(
-            self.task_id,
-            SystemMessage(content=f"代码手开始求解{key}"),
-        )
+        await redis_manager.notify(self.task_id, f"代码手开始求解{key}")
 
         code_files_before = snapshot_code_files(self.work_dir)
         coder_prompt = value["coder_prompt"]
@@ -1768,24 +1720,16 @@ class RemitWorkFlow(WorkFlow):
                         "本轮明确要求返修，已有报告仍需人工复核；保留证据并落实修改意见，不能直接复用旧结论。"
                     )
                 recovered_gate_report = recovered_report
-                await redis_manager.publish_message(
+                await redis_manager.notify(
                     self.task_id,
-                    SystemMessage(
-                        content=(
-                            f"检测到 {key} 已有完整"
-                            + (
-                                "人工复核"
-                                if recovered_report.manual_review_required
-                                else "且已通过质量门禁的"
-                            )
-                            + "产物，将结合待办返修意见恢复当前步骤"
-                        ),
-                        type=(
-                            "warning"
-                            if recovered_report.manual_review_required
-                            else "success"
-                        ),
-                    ),
+                    f"检测到 {key} 已有完整"
+                    + (
+                        "人工复核"
+                        if recovered_report.manual_review_required
+                        else "且已通过质量门禁的"
+                    )
+                    + "产物，将结合待办返修意见恢复当前步骤",
+                    "warning" if recovered_report.manual_review_required else "success",
                 )
             except DeliverableValidationError as interrupted_error:
                 repair_execution_limit = get_repair_execution_limit(
@@ -1860,14 +1804,18 @@ class RemitWorkFlow(WorkFlow):
                 model_plan = str(revision_plan.get("revised_strategy", model_plan))
                 coder_prompt = self._build_model_revision_coder_prompt(
                     question_text=question_text,
-                    gate_error=str(pending_revision.get("gate_error", "继续未完成的结果补件")),
+                    gate_error=str(
+                        pending_revision.get("gate_error", "继续未完成的结果补件")
+                    ),
                     revision_plan=revision_plan,
                     contract_prompt=contract.prompt_block(),
                 )
                 repair_execution_limit = None
-        first_gate_attempt = min(3, 1 + sum(
-            item.get("trigger") == "modeler_review" for item in revision_history
-        ))
+        first_gate_attempt = min(
+            3,
+            1
+            + sum(item.get("trigger") == "modeler_review" for item in revision_history),
+        )
         for gate_attempt in range(first_gate_attempt, 4):
             if contract is None:
                 raise RuntimeError(f"{key} 缺少强制质量契约")
@@ -1940,15 +1888,11 @@ class RemitWorkFlow(WorkFlow):
                 except DeliverableValidationError as error:
                     if gate_attempt >= 3:
                         # 三连败不再作废任务：保留全部产物，挂起等待人工裁决。
-                        await redis_manager.publish_message(
+                        await redis_manager.notify(
                             self.task_id,
-                            SystemMessage(
-                                content=(
-                                    f"{key} 连续 3 次未通过交付质量门禁，"
-                                    f"任务已挂起等待人工处理：{error}"
-                                ),
-                                type="error",
-                            ),
+                            f"{key} 连续 3 次未通过交付质量门禁，"
+                            f"任务已挂起等待人工处理：{error}",
+                            "error",
                         )
                         await self._require_human_approval(
                             state,
@@ -1993,15 +1937,11 @@ class RemitWorkFlow(WorkFlow):
                         )
                         if failed_model and failed_model not in rejected_models:
                             rejected_models.append(failed_model)
-                        await redis_manager.publish_message(
+                        await redis_manager.notify(
                             self.task_id,
-                            SystemMessage(
-                                content=(
-                                    f"{key} 样本外性能、可行性或稳定性未达标，"
-                                    f"已退回建模手更换模型 ({gate_attempt}/3): {error}"
-                                ),
-                                type="warning",
-                            ),
+                            f"{key} 样本外性能、可行性或稳定性未达标，"
+                            f"已退回建模手更换模型 ({gate_attempt}/3): {error}",
+                            "warning",
                         )
                         revision_plan = await modeler_agent.revise_after_execution(
                             question_key=key,
@@ -2041,25 +1981,17 @@ class RemitWorkFlow(WorkFlow):
                         # 必须恢复完整执行预算，否则新方案会在两次工具调用后再次
                         # 被截断，永远无法形成可比较的模型证据。
                         repair_execution_limit = None
-                        await redis_manager.publish_message(
+                        await redis_manager.notify(
                             self.task_id,
-                            SystemMessage(
-                                content=(
-                                    f"建模手已切换为 {revision_plan.selected_model}，"
-                                    f"代码手将按原门槛重新运行并验证 {key}"
-                                ),
-                            ),
+                            f"建模手已切换为 {revision_plan.selected_model}，"
+                            f"代码手将按原门槛重新运行并验证 {key}",
                         )
                     else:
-                        await redis_manager.publish_message(
+                        await redis_manager.notify(
                             self.task_id,
-                            SystemMessage(
-                                content=(
-                                    f"{key} 产物或验证格式未通过，代码手自动返修 "
-                                    f"({gate_attempt}/3): {error}"
-                                ),
-                                type="warning",
-                            ),
+                            f"{key} 产物或验证格式未通过，代码手自动返修 "
+                            f"({gate_attempt}/3): {error}",
+                            "warning",
                         )
                         coder_prompt = build_repair_prompt(
                             contract,
@@ -2184,15 +2116,11 @@ class RemitWorkFlow(WorkFlow):
                 # 通过格式门禁后的建模手 refine 同样代表换模重算，不能沿用
                 # 断点格式返修的两次执行上限。
                 repair_execution_limit = None
-                await redis_manager.publish_message(
+                await redis_manager.notify(
                     self.task_id,
-                    SystemMessage(
-                        content=(
-                            f"建模手复核 {key} 后认为仍可改进，已改用 "
-                            f"{revision_plan.selected_model} 重新运行 ({gate_attempt + 1}/3)"
-                        ),
-                        type="warning",
-                    ),
+                    f"建模手复核 {key} 后认为仍可改进，已改用 "
+                    f"{revision_plan.selected_model} 重新运行 ({gate_attempt + 1}/3)",
+                    "warning",
                 )
                 continue
 
@@ -2205,19 +2133,15 @@ class RemitWorkFlow(WorkFlow):
             raise RuntimeError("quality gate report is not available")
         if execution_review is None:
             raise RuntimeError("execution review is not available")
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             self.task_id,
-            SystemMessage(
-                content=(
-                    f"{key} 代码结果已通过质量门禁和建模手复核"
-                    if execution_review.verdict == "accept"
-                    else (
-                        f"{key} 证据完整性已通过，但关键稳健性检查存在冲突，"
-                        "已停止自动返工并转人工审核"
-                    )
-                ),
-                type=("success" if execution_review.verdict == "accept" else "warning"),
+            f"{key} 代码结果已通过质量门禁和建模手复核"
+            if execution_review.verdict == "accept"
+            else (
+                f"{key} 证据完整性已通过，但关键稳健性检查存在冲突，"
+                "已停止自动返工并转人工审核"
             ),
+            "success" if execution_review.verdict == "accept" else "warning",
         )
         quality_path = Path(self.work_dir) / contract.quality_filename
         quality_report = json.loads(quality_path.read_text(encoding="utf-8"))
@@ -2267,10 +2191,7 @@ class RemitWorkFlow(WorkFlow):
             }
             await self._complete_node(state, node_id)
         else:
-            await redis_manager.publish_message(
-                self.task_id,
-                SystemMessage(content=f"论文手开始写{key}部分"),
-            )
+            await redis_manager.notify(self.task_id, f"论文手开始写{key}部分")
             writer_response: WriterResponse | None = None
             for writer_attempt in range(1, 3):
                 writer_response = await writer_agent.run(
@@ -2296,15 +2217,11 @@ class RemitWorkFlow(WorkFlow):
                 except DeliverableValidationError as error:
                     if writer_attempt >= 2:
                         # 与结构章节一致：写作失败挂起等人，不作废已通过门禁的计算
-                        await redis_manager.publish_message(
+                        await redis_manager.notify(
                             self.task_id,
-                            SystemMessage(
-                                content=(
-                                    f"{key} 论文段落连续 2 次未通过门禁，"
-                                    f"任务已挂起等待人工处理：{error}"
-                                ),
-                                type="error",
-                            ),
+                            f"{key} 论文段落连续 2 次未通过门禁，"
+                            f"任务已挂起等待人工处理：{error}",
+                            "error",
                         )
                         await self._require_human_approval(
                             state,
@@ -2317,12 +2234,10 @@ class RemitWorkFlow(WorkFlow):
                             ),
                             allow_incomplete=True,
                         )
-                    await redis_manager.publish_message(
+                    await redis_manager.notify(
                         self.task_id,
-                        SystemMessage(
-                            content=f"{key} 论文段落未通过门禁，写作手返修: {error}",
-                            type="warning",
-                        ),
+                        f"{key} 论文段落未通过门禁，写作手返修: {error}",
+                        "warning",
                     )
                     writer_prompt = (
                         f"上一稿未通过论文门禁：{error}\n"
@@ -2343,10 +2258,7 @@ class RemitWorkFlow(WorkFlow):
                 "execution_summary": execution_summary.model_dump(mode="json"),
             }
             await self._complete_node(state, node_id)
-            await redis_manager.publish_message(
-                self.task_id,
-                SystemMessage(content=f"论文手完成{key}部分"),
-            )
+            await redis_manager.notify(self.task_id, f"论文手完成{key}部分")
         await self._require_human_approval(
             state,
             node_id,
@@ -2482,11 +2394,8 @@ class RemitWorkFlow(WorkFlow):
             raise RuntimeError("workflow checkpoint is not initialized")
         await self._start_node(state, f"write:{pending_write[0][0]}")
         await self._check_cancelled()
-        await redis_manager.publish_message(
-            self.task_id,
-            SystemMessage(
-                content=f"论文手开始并行撰写 {len(pending_write)} 个结构章节"
-            ),
+        await redis_manager.notify(
+            self.task_id, f"论文手开始并行撰写 {len(pending_write)} 个结构章节"
         )
 
         # 插话统一广播到全部章节：并行克隆各自 drain 会被随机一章独占
@@ -2531,12 +2440,10 @@ class RemitWorkFlow(WorkFlow):
             )
             retry_prompt = prompts[key]
             if writer_response is None:
-                await redis_manager.publish_message(
+                await redis_manager.notify(
                     self.task_id,
-                    SystemMessage(
-                        content=f"{key} 章节并行生成失败，转入串行重写: {outcome}",
-                        type="warning",
-                    ),
+                    f"{key} 章节并行生成失败，转入串行重写: {outcome}",
+                    "warning",
                 )
             last_error = ""
             for writer_attempt in range(1, 3):
@@ -2559,12 +2466,10 @@ class RemitWorkFlow(WorkFlow):
                     writer_response = None
                     if writer_attempt >= 2:
                         break
-                    await redis_manager.publish_message(
+                    await redis_manager.notify(
                         self.task_id,
-                        SystemMessage(
-                            content=f"{key} 章节未通过门禁，写作手返修: {error}",
-                            type="warning",
-                        ),
+                        f"{key} 章节未通过门禁，写作手返修: {error}",
+                        "warning",
                     )
                     retry_prompt = (
                         f"上一稿未通过章节门禁：{error}\n"
@@ -2583,15 +2488,11 @@ class RemitWorkFlow(WorkFlow):
         if failed_chapters:
             failed_keys = "、".join(key for key, _ in failed_chapters)
             first_key, first_error = failed_chapters[0]
-            await redis_manager.publish_message(
+            await redis_manager.notify(
                 self.task_id,
-                SystemMessage(
-                    content=(
-                        f"章节 {failed_keys} 连续 2 次未通过门禁，"
-                        f"任务已挂起等待人工处理；其余章节已完成并保留。"
-                    ),
-                    type="error",
-                ),
+                f"章节 {failed_keys} 连续 2 次未通过门禁，"
+                f"任务已挂起等待人工处理；其余章节已完成并保留。",
+                "error",
             )
             await self._require_human_approval(
                 state,
@@ -2661,12 +2562,10 @@ class RemitWorkFlow(WorkFlow):
             logger.warning(f"终稿评审降级跳过: {exc}")
             return None
         if not review:
-            await redis_manager.publish_message(
+            await redis_manager.notify(
                 self.task_id,
-                SystemMessage(
-                    content="终稿评审未能完成，跳过评委复审直接进入最终检查",
-                    type="warning",
-                ),
+                "终稿评审未能完成，跳过评委复审直接进入最终检查",
+                "warning",
             )
             state["paper_review"] = {"skipped": True}
             self.checkpoint.save(state)
@@ -2684,17 +2583,13 @@ class RemitWorkFlow(WorkFlow):
                 ("innovation", "创新"),
             )
         )
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             self.task_id,
-            SystemMessage(
-                content=(
-                    f"评委复审完成：总分 {review['overall']:.0f}/10（{score_line}）。"
-                    + (
-                        f"将定向重写 {len(review['weakest_sections'])} 个最弱章节"
-                        if review["weakest_sections"]
-                        else "未发现需要重写的章节"
-                    )
-                ),
+            f"评委复审完成：总分 {review['overall']:.0f}/10（{score_line}）。"
+            + (
+                f"将定向重写 {len(review['weakest_sections'])} 个最弱章节"
+                if review["weakest_sections"]
+                else "未发现需要重写的章节"
             ),
         )
         rewritten_sections: list[str] = []
@@ -2772,12 +2667,10 @@ class RemitWorkFlow(WorkFlow):
                             f"{key} 重写稿丢失原稿标题 {heading}"
                         )
             except Exception as exc:
-                await redis_manager.publish_message(
+                await redis_manager.notify(
                     self.task_id,
-                    SystemMessage(
-                        content=f"章节 {key} 定向重写未通过校验，保留原稿：{exc}",
-                        type="warning",
-                    ),
+                    f"章节 {key} 定向重写未通过校验，保留原稿：{exc}",
+                    "warning",
                 )
                 continue
             user_output.set_res(key, rewritten)
@@ -2816,16 +2709,12 @@ class RemitWorkFlow(WorkFlow):
         if revision_feedback:
             # finalize 是确定性合并检查，无法按意见自动修改内容；
             # 明确告知而不是静默吞掉意见。
-            await redis_manager.publish_message(
+            await redis_manager.notify(
                 self.task_id,
-                SystemMessage(
-                    content=(
-                        "最终合并节点无法按退回意见自动修改论文内容，"
-                        f"意见仅作记录：{revision_feedback}\n"
-                        "如需修改正文，请退回具体章节节点。"
-                    ),
-                    type="warning",
-                ),
+                "最终合并节点无法按退回意见自动修改论文内容，"
+                f"意见仅作记录：{revision_feedback}\n"
+                "如需修改正文，请退回具体章节节点。",
+                "warning",
             )
         user_output.save_result()
         review = await self._review_and_polish_paper(
@@ -2864,12 +2753,10 @@ class RemitWorkFlow(WorkFlow):
                     node for node in state.get(field, []) if node != "finalize"
                 ]
             self.checkpoint.save(state)
-            await redis_manager.publish_message(
+            await redis_manager.notify(
                 self.task_id,
-                SystemMessage(
-                    content=f"最终论文未通过硬门禁，任务已挂起等待人工处理：{error}",
-                    type="error",
-                ),
+                f"最终论文未通过硬门禁，任务已挂起等待人工处理：{error}",
+                "error",
             )
             await self._require_human_approval(
                 state,
@@ -2882,16 +2769,12 @@ class RemitWorkFlow(WorkFlow):
                 allow_incomplete=True,
             )
         await self._complete_node(state, "finalize")
-        await redis_manager.publish_message(
+        await redis_manager.notify(
             self.task_id,
-            SystemMessage(
-                content=(
-                    f"整篇论文通过最终硬门禁并完成两次 LaTeX 编译："
-                    f"{delivery.tex_path.name}、{delivery.pdf_path.name} "
-                    f"（{delivery.page_count} 页）"
-                ),
-                type="success",
-            ),
+            f"整篇论文通过最终硬门禁并完成两次 LaTeX 编译："
+            f"{delivery.tex_path.name}、{delivery.pdf_path.name} "
+            f"（{delivery.page_count} 页）",
+            "success",
         )
         review_summary = ""
         review_numbers: list[dict[str, Any]] = []

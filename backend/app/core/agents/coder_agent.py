@@ -29,7 +29,7 @@ from app.core.structured_output import (
     response_was_truncated,
 )
 from app.schemas.A2A import CoderToWriter
-from app.schemas.response import InterpreterMessage, SystemMessage
+from app.schemas.response import InterpreterMessage
 from app.services.redis_manager import redis_manager
 from app.services import call_ledger
 from app.services.async_io import run_blocking
@@ -412,10 +412,7 @@ class CoderAgent(Agent):
             )
 
     async def _notify(self, content: str, level: str) -> None:
-        await redis_manager.publish_message(
-            self.task_id,
-            SystemMessage(content=content, type=level),  # type: ignore[arg-type]
-        )
+        await redis_manager.notify(self.task_id, content, level)
 
     async def _call_model(
         self, tools: list[dict], tool_choice: str = "auto", *, purpose="normal_work"

@@ -177,6 +177,15 @@ class RedisManager:
                 f"前端刷新后可恢复，任务继续执行: {exc}"
             )
 
+    async def notify(
+        self, task_id: str, content: str, type: str = "info", **fields
+    ) -> None:
+        """发布一条系统消息。"""
+        await self.publish_message(
+            task_id,
+            SystemMessage(content=content, type=type, **fields),  # type: ignore[arg-type]
+        )
+
     async def subscribe_to_task(self, task_id: str):
         client = await self.get_client()
         pubsub = client.pubsub()

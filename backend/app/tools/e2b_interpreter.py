@@ -18,7 +18,6 @@ from app.schemas.response import (
     ResultModel,
     StdErrModel,
     StdOutModel,
-    SystemMessage,
 )
 from app.services.redis_manager import redis_manager
 from app.tools.base_interpreter import BaseCodeInterpreter
@@ -127,13 +126,9 @@ class E2BCodeInterpreter(BaseCodeInterpreter):
         logger.info(f"执行代码: {code}")
         self.notebook_serializer.add_code_cell_to_notebook(code)
 
-        await redis_manager.publish_message(
-            self.task_id, SystemMessage(content="开始执行代码")
-        )
+        await redis_manager.notify(self.task_id, "开始执行代码")
         execution = await self.sbx.run_code(code)
-        await redis_manager.publish_message(
-            self.task_id, SystemMessage(content="代码执行完成")
-        )
+        await redis_manager.notify(self.task_id, "代码执行完成")
 
         display: list[OutputItem] = []
         failed = False

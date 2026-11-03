@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from app.core.llm.llm import LLM
-from app.schemas.response import SystemMessage
 from app.services.redis_manager import redis_manager
 from app.utils.log_util import logger
 
@@ -212,12 +211,8 @@ class Agent:
             }
         )
         try:
-            await redis_manager.publish_message(
-                self.task_id,
-                SystemMessage(
-                    content=f"已把你的 {len(notes)} 条补充意见注入当前步骤",
-                    type="success",
-                ),
+            await redis_manager.notify(
+                self.task_id, f"已把你的 {len(notes)} 条补充意见注入当前步骤", "success"
             )
         except Exception as exc:
             logger.warning(f"插话注入确认消息发送失败: {exc}")

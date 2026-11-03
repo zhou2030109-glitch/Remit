@@ -18,7 +18,7 @@ from app.core.structured_output import (
 )
 from app.schemas.A2A import WriterResponse
 from app.schemas.enums import CompTemplate, FormatOutPut
-from app.schemas.response import SystemMessage, WriterMessage
+from app.schemas.response import WriterMessage
 from app.services.redis_manager import redis_manager
 from app.tools.openalex_scholar import OpenAlexScholar
 from app.utils.log_util import logger
@@ -225,9 +225,7 @@ class WriterAgent(Agent):
             return f"工具 {tool_call.name} 不受支持。请使用已有证据继续完成正文。"
 
         logger.info("调用工具: search_papers")
-        await redis_manager.publish_message(
-            self.task_id, SystemMessage(content=f"写作手调用{tool_call.name}工具")
-        )
+        await redis_manager.notify(self.task_id, f"写作手调用{tool_call.name}工具")
         import json
 
         query = json.loads(tool_call.arguments)["query"]
