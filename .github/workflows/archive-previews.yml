@@ -20,7 +20,7 @@ jobs:
       PREVIEW_TAG: ${{ matrix.tag }}
       ARCHIVE_TAG: archive/preview-${{ matrix.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Preserve source tag and original installation assets
         shell: bash
         run: |
